@@ -1,0 +1,5 @@
+LibName;LibExp;LibBam
+L6_1;INPUT;L6_1.BOWTIE.saccer3.pe.sorted.bam
+L6_2;INPUT;L6_2.BOWTIE.saccer3.pe.sorted.bam
+L6_3;IGG;L6_3.BOWTIE.saccer3.pe.sorted.bam
+L6_4;IGG;L6_4.BOWTIE.saccer3.pe.sorted.bam

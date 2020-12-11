@@ -1,0 +1,4 @@
+LibName;LibFastq1;LibFastq2
+L6_1_DummyWT;L6_1_S1_all_R1_001_cutadapt.fastq.gz;L6_1_S1_all_R2_001_cutadapt.fastq.gz
+L6_2_DummyMut1;L6_2_S2_all_R1_001_cutadapt.fastq.gz;L6_2_S2_all_R2_001_cutadapt.fastq.gz
+L6_3_DummyMut2;L6_3_S3_all_R1_001_cutadapt.fastq.gz;L6_3_S3_all_R2_001_cutadapt.fastq.gz
