@@ -219,6 +219,10 @@ else {
 process samtools {
    echo true
    tag "$LibName"
+   memory { 5.GB* task.attempt }
+   errorStrategy { task.attempt < 5 ? 'retry' : 'ingore'}
+   maxRetries 5
+
    publishDir "${params.outdir}/Mapping", mode: 'copy' //params.publish_dir_mode,
 
    input:
