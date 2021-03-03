@@ -45,17 +45,21 @@ if (!params.merge_bam){
       .fromPath(params.input_design)
       .splitCsv(header:true, sep:';')
       .map { row -> [ row.LibName,  file("$params.input_dir/$row.LibFastq1", checkIfExists: true), file("$params.input_dir/$row.LibFastq2", checkIfExists: true), "$row.LibName.${params.mapper_id}.${params.genome_prefix}"+".pe" ] }
-      .into { design_reads_csv; test1_ch }
+      .into { design_reads_csv; ch_Toreport_reads_nb }
    
-   /* Proceeding to aquire nb of sequenced reads.
-   *
+   /* Reporting at multiple steps
+   - 1 nb of sequenced reads
+   - 2 nb of reads post trimming
+   - 3 nb of mapped reads w/ filter
+   - 4 nb of non pcr duplicate reads
+   - Merge all and write in csv
    */
-   process nb_Reads {
+   process _report_Nbseqreads {
       tag "$LibName"
       input:
-      tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix from design_reads_csv
+      tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix from ch_Toreport_reads_nb
       output:
-      tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix, stdout into design_mapping_ch
+      tuple LibName, MappingPrefix, stdout into ch_Toreport_trim
 
       script:
       """
@@ -67,7 +71,29 @@ if (!params.merge_bam){
 
 if(params.bowtie_mapping){
    /*
-   * Step 1. Builds the genome index required by the mapping process
+   * Step 1. Trim the reads 
+   *   - using trim_galore
+   */
+   process trimming {
+      tag "$LibName"
+      label "multiCpu"
+      input:
+      tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix from design_reads_csv
+      output:
+      "report.txt"
+      tuple LibName, file(LibTrimFastq1), file(LibTrimFastq2), MappingPrefix into design_mapping_ch
+
+      script:
+      """
+      trim_galore ${params.trim_galore_options} \\
+      --cores ${task.cpus} \\
+      ${LibTrimFastq1} ${LibTrimFastq2}
+      """
+
+   }
+
+   /*
+   * Step 2. Builds the genome index required by the mapping process
    *   - check if genome is already indexed
    *   - checkIfExists file basedir(params.genome)/params.genome_prefix.1.bt2,2.bt2, 3.bt2, 4.bt2, rev.1.bt2, rev.2.bt2
    *    - see https://github.com/SciLifeLab/NGI-smRNAseq/blob/master/main.nf
