@@ -77,17 +77,23 @@ if(params.bowtie_mapping){
    process trimming {
       tag "$LibName"
       label "multiCpu"
+      publishDir "${params.outdir}/TrimedReads", mode: 'copy', //params.publish_dir_mode,
+      saveAs: { filename ->
+               if (filename.endsWith('.fq.gz')) "./$filename"
+               else null
+      }
+
       input:
       tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix from design_reads_csv
       output:
-      "report.txt"
-      tuple LibName, file(LibTrimFastq1), file(LibTrimFastq2), MappingPrefix into design_mapping_ch
+      tuple LibName, file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz"), MappingPrefix into design_mapping_ch
 
       script:
       """
-      trim_galore ${params.trim_galore_options} \\
-      --cores ${task.cpus} \\
-      ${LibTrimFastq1} ${LibTrimFastq2}
+      trim_galore ${params.trim_galore_options} \
+      --cores ${task.cpus} \
+      --basename ${LibName} \
+      ${LibFastq1} ${LibFastq2}
       """
 
    }
