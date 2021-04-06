@@ -100,9 +100,9 @@ if(params.bowtie_mapping){
 
    /*
    * Step 2. Builds the genome index required by the mapping process
-   *   - check if genome is already indexed
-   *   - checkIfExists file basedir(params.genome)/params.genome_prefix.1.bt2,2.bt2, 3.bt2, 4.bt2, rev.1.bt2, rev.2.bt2
-   *    - see https://github.com/SciLifeLab/NGI-smRNAseq/blob/master/main.nf
+   TODO   - check if genome is already indexed
+   TODO   - checkIfExists file basedir(params.genome)/params.genome_prefix.1.bt2,2.bt2, 3.bt2, 4.bt2, rev.1.bt2, rev.2.bt2
+   TODO    - see https://github.com/SciLifeLab/NGI-smRNAseq/blob/master/main.nf
    */
    process buildIndexBT {
       tag "$genome.baseName"
@@ -245,8 +245,8 @@ else {
 
 /*
  * Step 3. Filters the mapping file with samtools
- *    add flagstat
- *    add idxstats
+ TODO    add flagstat
+ TODO    add idxstats
  */
 process samtools {
    echo true
@@ -384,3 +384,5 @@ process report_stats_rmdup {
    echo "${LibName};${SequencedReads};${MappedReads};" > ${LibName}.rmdup.mapped_reads.txt
    """
 }
+/* 
+TODO  - Channel.collectFile to output what's needed for nf-AnalysesOnCoordinates (BigwigDesign.csv)
