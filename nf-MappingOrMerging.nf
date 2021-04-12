@@ -60,7 +60,7 @@ if (!params.merge_bam){
       input:
       tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix from ch_Toreport_reads_nb
       output:
-      tuple LibName, MappingPrefix, stdout into {ch_Toreport_trim_nb; test_ch}
+      tuple LibName, MappingPrefix, stdout into ( ch_Toreport_trim_nb, test_ch )
       script:
       """
       nb_line1=`gunzip -dc ${LibFastq1} | wc -l`
@@ -107,7 +107,7 @@ ch_Toreport_trim_nb.join(trimed_reads_ch)
       input:
       tuple LibName, MappingPrefix, NbSeqReads, file(LibFastq1), file(LibFastq2) from ch_report_trim_nb
       output:
-      tuple LibName, MappingPrefix, NbSeqReads, stdout into {ch_Toreport_mapped_nb; ch_Toreport_uniq_nb}
+      tuple LibName, MappingPrefix, NbSeqReads, stdout into (ch_Toreport_mapped_nb, ch_Toreport_uniq_nb)
 
       script:
       """
