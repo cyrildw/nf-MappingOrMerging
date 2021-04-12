@@ -415,11 +415,11 @@ process _report_uniq_insert_size {
    tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_uniq_insert_size
    output:
    tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into ch_Toreport_uniq_stats
-   file(table)
+   file(table_uniq)
    script:
    """
-   bamPEFragmentSize --bamfiles ${bamFiles[0]} --table table >/dev/null 2>&1
-   tail -1 table | awk '{ print \$6}'
+   bamPEFragmentSize --bamfiles ${bamFiles[0]} --table table_uniq >/dev/null 2>&1
+   tail -1 table_uniq | awk '{ print \$6}'
    """
 }
 
