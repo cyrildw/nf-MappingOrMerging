@@ -98,8 +98,7 @@ if (!params.merge_bam){
       """
    }
 
-ch_Toreport_trim_nb
-   .join(trimed_reads_ch)
+ch_Toreport_trim_nb.join(trimed_reads_ch)
    .set(ch_report_trim_nb)
 
    process _report_Nbtrimreads {
