@@ -383,7 +383,7 @@ process _report_insert_size {
    script
    """
    bamPEFragmentSize --bamfiles ${bamFiles[0]} --table table >/dev/null 2>&1
-   tail -1 table | awk '{ print $6}'
+   tail -1 table | awk '{ print \$6}'
    """
 }
 
@@ -419,7 +419,7 @@ process _report_uniq_insert_size {
    script
    """
    bamPEFragmentSize --bamfiles ${bamFiles[0]} --table table >/dev/null 2>&1
-   tail -1 table | awk '{ print $6}'
+   tail -1 table | awk '{ print \$6}'
    """
 }
 ch_Toreport_uniq_stats.collectFile(name:"${params.outdir}/Stats/Mapping_stats.rmdup.txt", newLine:true)
