@@ -60,7 +60,7 @@ if (!params.merge_bam){
       input:
       tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix from ch_Toreport_reads_nb
       output:
-      tuple LibName, MappingPrefix, stdout into ch_Toreport_trim_nb
+      tuple LibName, MappingPrefix, stdout into {ch_Toreport_trim_nb; test_ch}
       script:
       """
       nb_line1=`gunzip -dc ${LibFastq1} | wc -l`
@@ -71,7 +71,7 @@ if (!params.merge_bam){
       echo -n \$nb_reads
       """
    }
-   ch_Toreport_trim_nb.view()
+   test_ch.view()
 /*
    * Step 1. Trim the reads 
    *   - using trim_galore
