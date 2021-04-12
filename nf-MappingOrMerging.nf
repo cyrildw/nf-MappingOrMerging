@@ -60,7 +60,7 @@ if (!params.merge_bam){
       input:
       tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix from ch_Toreport_reads_nb
       output:
-      tuple LibName, MappingPrefix, stdout into ( ch_Toreport_trim_nb, test_ch )
+      tuple LibName, stdout into ( ch_Toreport_trim_nb, test_ch )
       script:
       """
       nb_line1=`gunzip -dc ${LibFastq1} | wc -l`
@@ -105,9 +105,9 @@ ch_Toreport_trim_nb.join(trimed_reads_ch)
    process _report_Nbtrimreads {
       tag "$LibName"
       input:
-      tuple LibName, MappingPrefix, NbSeqReads, file(LibFastq1), file(LibFastq2) from ch_report_trim_nb
+      tuple LibName,  NbSeqReads, file(LibFastq1), file(LibFastq2) from ch_report_trim_nb
       output:
-      tuple LibName, MappingPrefix, NbSeqReads, stdout into (ch_Toreport_mapped_nb, ch_Toreport_uniq_nb)
+      tuple LibName,  NbSeqReads, stdout into (ch_Toreport_mapped_nb, ch_Toreport_uniq_nb)
 
       script:
       """
@@ -354,18 +354,18 @@ process genome_coverage_rmdup {
  *       - for .bam           -for .rmdup.bam
  */
 ch_Toreport_mapped_nb
-   .join(mapped_reads_ch)
-   .set{ch_report_mapped_nb}
+   .join(mapped_reads_ch).view()
+   //.set{ch_report_mapped_nb}
    
 
 // some issue in the bamPEFragmentSize call
 
-process _report_nb_mapped_reads {
-	tag "$LibName .bam"
+/*process _report_nb_mapped_reads {
+	tag "$LibName "
 	input:
-	tuple val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), path(bamFiles) from ch_report_mapped_nb
+	tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), path(bamFiles) from ch_report_mapped_nb
 	output:
-	tuple val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), stdout, path(bamFiles) into ch_Toreport_insert_size
+	tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), stdout, path(bamFiles) into ch_Toreport_insert_size
 
 	script:
 	"""
@@ -376,9 +376,9 @@ process _report_nb_mapped_reads {
 
 process _report_insert_size {
    tag "$LibName"
-   input val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_insert_size
+   input val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_insert_size
    output:
-   input val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into ch_Toreport_all_stats
+   input val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into ch_Toreport_all_stats
    file(table)
    script
    """
@@ -399,9 +399,9 @@ ch_Toreport_uniq_nb
 process _report_nb_uniq_reads {
 	tag "$LibName rmdup.bam"
 	input:
-	tuple val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), path(bamFiles) from ch_report_uniq_nb
+	tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), path(bamFiles) from ch_report_uniq_nb
 	output:
-	tuple val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), stdout, path(bamFiles) into ch_Toreport_uniq_insert_size
+	tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), stdout, path(bamFiles) into ch_Toreport_uniq_insert_size
 
 	script:
 	"""
@@ -412,9 +412,9 @@ process _report_nb_uniq_reads {
 
 process _report_uniq_insert_size {
    tag "$LibName"
-   input val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_uniq_insert_size
+   input val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_uniq_insert_size
    output:
-   input val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into ch_Toreport_uniq_stats
+   input val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into ch_Toreport_uniq_stats
    file(table)
    script
    """
@@ -426,7 +426,7 @@ ch_Toreport_uniq_stats.collectFile(name:"${params.outdir}/Stats/Mapping_stats.rm
    .subscribe{
       println "it[0];it[1];it[2];it[3];it[4];it[5];it[6]"
    }
-
+*/
 /*process report_stats {
    tag "$LibName .bam"
    publishDir "${params.outdir}/Stats", mode: 'copy'
