@@ -375,6 +375,7 @@ process _report_nb_mapped_reads {
 	"""
 }
 
+/* some issue in the bamPEFragmentSize call
 process _report_insert_size {
    tag "$LibName"
    input val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_insert_size
@@ -392,7 +393,7 @@ ch_Toreport_all_stats.collectFile(name:"${params.outdir}/Stats/Mapping_stats.txt
    .subscribe{
       println "it[0];it[1];it[2];it[3];it[4];it[5];it[6]"
    }
-
+*/
 ch_Toreport_uniq_nb.
    .join(mapped_uniq_reads_ch)
    .set(ch_report_uniq_nb)
