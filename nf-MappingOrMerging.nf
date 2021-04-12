@@ -373,7 +373,7 @@ process _report_nb_mapped_reads {
 	echo -n \$mapped_reads
 	"""
 }
-/*
+
 process _report_insert_size {
    tag "$LibName"
    input val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_insert_size
@@ -386,7 +386,7 @@ process _report_insert_size {
    tail -1 table | awk '{ print \$6}'
    """
 }
-
+/*
 ch_Toreport_all_stats.collectFile(name:"${params.outdir}/Stats/Mapping_stats.txt", newLine:true)
    .subscribe{
       println "it[0];it[1];it[2];it[3];it[4];it[5];it[6]"
