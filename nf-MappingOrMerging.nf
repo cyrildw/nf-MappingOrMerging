@@ -376,9 +376,10 @@ process _report_nb_mapped_reads {
 
 process _report_insert_size {
    tag "$LibName"
-   input val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_insert_size
+   input:
+   tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_insert_size
    output:
-   input val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into ch_Toreport_all_stats
+   tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into ch_Toreport_all_stats
    file(table)
    script
    """
@@ -412,9 +413,10 @@ process _report_nb_uniq_reads {
 /*
 process _report_uniq_insert_size {
    tag "$LibName"
-   input val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_uniq_insert_size
+   input:
+   tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_uniq_insert_size
    output:
-   input val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into ch_Toreport_uniq_stats
+   tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into ch_Toreport_uniq_stats
    file(table)
    script
    """
