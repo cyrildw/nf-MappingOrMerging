@@ -48,10 +48,11 @@ if (!params.merge_bam){
       .into { design_reads_csv; ch_Toreport_reads_nb }
    
    /* Reporting at multiple steps
-   - 1 nb of sequenced reads
-   - 2 nb of reads post trimming
-   - 3 nb of mapped reads w/ filter
-   - 4 nb of non pcr duplicate reads
+   - 1 nb of sequenced reads (_report_Nbseqreads)
+   - 2 nb of reads post trimming (_report_Nbtrimreads)
+   - 3 nb of mapped reads w/ filter (_report_Nbmappedreads)
+   - 4 nb of non pcr duplicate reads (_report_Nbuniqreads)
+   - 5 insert size
    - Merge all and write in csv
    */
    process _report_Nbseqreads {
@@ -59,18 +60,18 @@ if (!params.merge_bam){
       input:
       tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix from ch_Toreport_reads_nb
       output:
-      tuple LibName, MappingPrefix, stdout into ch_Toreport_trim
-
+      tuple LibName, MappingPrefix, stdout into ch_Toreport_trim_nb
       script:
       """
-      nb_line=`gunzip -dc ${LibFastq1} | wc -l`
-      let nb_reads=\$nb_line/2
+      nb_line1=`gunzip -dc ${LibFastq1} | wc -l`
+      nb_line2=`gunzip -dc ${LibFastq2} | wc -l`
+      let nb_reads1=\$nb_line1/4
+      let nb_reads2=\$nb_line2/4
+      let nb_reads=\$nbreads1+\$nb_reads2
       echo -n \$nb_reads
       """
    }
-
-if(params.bowtie_mapping){
-   /*
+/*
    * Step 1. Trim the reads 
    *   - using trim_galore
    */
@@ -87,7 +88,7 @@ if(params.bowtie_mapping){
       tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix from design_reads_csv
       output:
       tuple LibName, file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz"), MappingPrefix into design_mapping_ch
-
+      tuple LibName, file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz") into trimed_reads_ch
       script:
       """
       trim_galore ${params.trim_galore_options} \
@@ -95,9 +96,33 @@ if(params.bowtie_mapping){
       --basename ${LibName} \
       ${LibFastq1} ${LibFastq2}
       """
-
    }
 
+ch_Toreport_trim_nb
+   .join(trimed_reads_ch)
+   .set(ch_report_trim_nb)
+
+   process _report_Nbtrimreads {
+      tag "$LibName"
+      input:
+      tuple LibName, MappingPrefix, NbSeqReads, file(LibFastq1), file(LibFastq2) from ch_report_trim_nb
+      output:
+      tuple LibName, MappingPrefix, NbSeqReads, stdout into {ch_Toreport_mapped_nb; ch_Toreport_uniq_nb}
+
+      script:
+      """
+      nb_line1=`gunzip -dc ${LibFastq1} | wc -l`
+      nb_line2=`gunzip -dc ${LibFastq2} | wc -l`
+      let nb_reads1=\$nb_line1/4
+      let nb_reads2=\$nb_line2/4
+      let nb_reads=\$nbreads1+\$nb_reads2
+      echo -n \$nb_reads
+      """
+   }
+
+
+if(params.bowtie_mapping){
+   
    /*
    * Step 2. Builds the genome index required by the mapping process
    TODO   - check if genome is already indexed
@@ -117,17 +142,20 @@ if(params.bowtie_mapping){
       bowtie2-build --threads ${task.cpus} ${genome} genome.index
       """
    }
+
+   /*
+   * Step 3. Mapping */
    process mapping_Bowtie2 {
       echo true
       tag "$LibName"
       label 'multiCpu'
       input:
-      tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix, SequencedReads from design_mapping_ch
+      tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix, from design_mapping_ch
       path genome from params.genome
       file index from index_ch
 
       output:
-      tuple val(LibName), val(MappingPrefix), val(SequencedReads), file("${MappingPrefix}.bam") into mapping_ch
+      tuple val(LibName), val(MappingPrefix), file("${MappingPrefix}.bam") into mapping_ch
       val LibName into libName_ch
 
       """
@@ -136,7 +164,7 @@ if(params.bowtie_mapping){
       --threads ${task.cpus} \
       -x genome.index \
       -1 ${LibFastq1} \
-      -2 ${LibFastq2} | samtools view -bSh -F 4 -f 3 -q ${params.samtools_q_filter} - > ${MappingPrefix}.bam
+      -2 ${LibFastq2} 2>/dev/null | samtools view -bSh -F 4 -f 3 -q ${params.samtools_q_filter} - > ${MappingPrefix}.bam 
       """
       //-S ${MappingPrefix}.raw.sam 
       /*
@@ -147,6 +175,7 @@ if(params.bowtie_mapping){
    }
 }
 else if(params.subread_mapping){
+/* Step 2 indexing genome */
    process buildIndexSR {
       tag "$genome.baseName"
       input:
@@ -160,18 +189,20 @@ else if(params.subread_mapping){
       subread-buildindex -o genome.index ${genome} 2>log 1>>log
       """
    }
+      /*
+   * Step 3. Mapping */
    process mapping_Subread {
       echo true
       tag "$LibName"
       label 'multiCpu_short'
       maxForks 8
       input:
-      tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix, SequencedReads from design_mapping_ch
+      tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix from design_mapping_ch
       path genome from params.genome
       file index from index_ch
 
       output:
-      tuple val(LibName), val(MappingPrefix), val(SequencedReads), file("${MappingPrefix}.bam") into mapping_ch
+      tuple val(LibName), val(MappingPrefix), file("${MappingPrefix}.bam") into mapping_ch
       val LibName into libName_ch
       file("log")
       file("${MappingPrefix}.tmp.bam*")
@@ -238,13 +269,7 @@ else {
 
 
 /*
- * Step 2. Map paired end reads on the genome
- *   ONGOING - couple with a samtools view direclty to avoid high weight file.
- *    *    configure optionnal parameters for filtering
-  */
-
-/*
- * Step 3. Filters the mapping file with samtools
+ * Step 4. Filters the mapping file with samtools
  TODO    add flagstat
  TODO    add idxstats
  */
@@ -256,11 +281,13 @@ process samtools {
    publishDir "${params.outdir}/Mapping", mode: 'copy' //params.publish_dir_mode,
 
    input:
-   tuple val(LibName), val(prefix), val(SequencedReads), file(RawMapping) from mapping_ch
+   tuple val(LibName), val(prefix),  file(RawMapping) from mapping_ch
    output:
    file("${prefix}.*.bam*") 
-   tuple val(LibName), val(prefix), val(SequencedReads), file("${prefix}.sorted.bam*") into samtooled_ch
-   tuple val(LibName), val(prefix), val(SequencedReads), file("${prefix}.sorted.rmdup.bam*") into samtooled_rmdup_ch
+   tuple val(LibName), val(prefix), file("${prefix}.sorted.bam*") into samtooled_ch
+   tuple val(LibName), file("${prefix}.sorted.bam*") into into mapped_reads_ch
+   tuple val(LibName), val(prefix),  file("${prefix}.sorted.rmdup.bam*") into samtooled_rmdup_ch
+   tuple val(LibName), file("${prefix}.sorted.rmdup.bam*") into mapped_uniq_reads_ch
 
 	//samtools view -bSh -F 4 -f 3 -q ${params.samtools_q_filter} ${prefix}.raw.sam > ${prefix}.bam
    script:
@@ -273,45 +300,8 @@ process samtools {
    """
 }   
 
-/*
- * Step 4. Get the number of mapped reads.
- *    Parallelized with two different processes
- *       - for .bam           -for .rmdup.bam
- */
-process nb_mapped_reads {
-	tag "$LibName .bam"
-	input:
-	tuple val(LibName), val(prefix), val(SequencedReads), path(bamFiles) from samtooled_ch
-	output:
-	tuple val(LibName), val(prefix), val(SequencedReads), stdout, path(bamFiles) into forGenomeCov_ch
 
-	script:
-	"""
-	mapped_reads=`samtools view -c ${bamFiles[0]}`
-	echo -n \$mapped_reads
-	"""
-}
 
-process nb_mapped_reads_rmdup {
-	tag "$LibName rmdup.bam"
-	input:
-	tuple val(LibName), val(prefix), val(SequencedReads), path(bamFiles) from samtooled_rmdup_ch
-	output:
-	tuple val(LibName), val(prefix), val(SequencedReads), stdout, path(bamFiles) into forGenomeCov_rmdup_ch
-
-	script:
-	"""
-	mapped_reads=`samtools view -c ${bamFiles[0]}`
-	echo -n \$mapped_reads
-	"""
-}
-
-//process nb_reads_concat {
-// Concatenate all nb_reads stats into one file
-// requires nb_reads output
-// collect()
-// output a single file.
-//}
 
 process genome_coverage_bam {
    tag "$LibName genome coverage .bam"
@@ -322,9 +312,9 @@ process genome_coverage_bam {
                else null
       }
    input:
-  	tuple val(LibName), val(prefix), val(SequencedReads), val(MappedReads), path(bamFiles) from forGenomeCov_ch
+  	tuple val(LibName), val(prefix),  path(bamFiles) from samtooled_ch
    output:
-	tuple val(LibName), val(prefix), val(SequencedReads), val(MappedReads), path(bamFiles), path("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into genCoved_ch
+	tuple val(LibName), val(prefix),  path(bamFiles), path("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into genCoved_ch
 
    """
    bamCoverage \
@@ -346,9 +336,9 @@ process genome_coverage_rmdup {
                else null
       }
    input:
-  	tuple val(LibName), val(prefix), val(SequencedReads), val(MappedReads), path(bamFiles) from forGenomeCov_rmdup_ch
+  	tuple val(LibName), val(prefix), path(bamFiles) from samtooled_rmdup_ch
    output:
-	tuple val(LibName), val(prefix), val(SequencedReads), val(MappedReads), path(bamFiles), path("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into genCoved_rmdup_ch
+	tuple val(LibName), val(prefix), path(bamFiles), path("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into genCoved_rmdup_ch
 
    """
    bamCoverage \
@@ -359,6 +349,81 @@ process genome_coverage_rmdup {
    --binSize ${params.bin_size} -p ${task.cpus}
    """
 }
+
+/*
+ * Step 5. Get the number of mapped reads.
+ *    Parallelized with two different processes
+ *       - for .bam           -for .rmdup.bam
+ */
+ch_Toreport_mapped_nb
+   .join(mapped_reads_ch)
+   .set(ch_report_mapped_nb)
+   
+
+
+process _report_nb_mapped_reads {
+	tag "$LibName .bam"
+	input:
+	tuple val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), path(bamFiles) from ch_report_mapped_nb
+	output:
+	tuple val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), stdout, path(bamFiles) into ch_Toreport_insert_size
+
+	script:
+	"""
+	mapped_reads=`samtools view -c ${bamFiles[0]}`
+	echo -n \$mapped_reads
+	"""
+}
+
+process _report_insert_size {
+   tag "$LibName"
+   input val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_insert_size
+   output:
+   input val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into ch_Toreport_all_stats
+   file(table)
+   script
+   """
+   bamPEFragmentSize --bamfiles ${bamFiles[0]} --table table >/dev/null 2>&1
+   tail -1 table | awk '{ print $6}'
+   """
+}
+
+ch_Toreport_all_stats.collectFile(name:"${params.outdir}/Stats/Mapping_stats.txt", newLine:true)
+   .subscribe{
+      println "it[0];it[1];it[2];it[3];it[4];it[5];it[6]"
+   }
+
+ch_Toreport_uniq_nb.
+   .join(mapped_uniq_reads_ch)
+   .set(ch_report_uniq_nb)
+
+process _report_nb_uniq_reads {
+	tag "$LibName rmdup.bam"
+	input:
+	tuple val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), path(bamFiles) from ch_report_uniq_nb
+	output:
+	tuple val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), stdout, path(bamFiles) into ch_Toreport_uniq_insert_size
+
+	script:
+	"""
+	mapped_reads=`samtools view -c ${bamFiles[0]}`
+	echo -n \$mapped_reads
+	"""
+}
+
+process _report_uniq_insert_size {
+   tag "$LibName"
+   input val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_uniq_insert_size
+   output:
+   input val(LibName), val(prefix), val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into ch_Toreport_uniq_stats
+   file(table)
+   script
+   """
+   bamPEFragmentSize --bamfiles ${bamFiles[0]} --table table >/dev/null 2>&1
+   tail -1 table | awk '{ print $6}'
+   """
+}
+
 
 process report_stats {
    tag "$LibName .bam"
@@ -386,3 +451,5 @@ process report_stats_rmdup {
 }
 /* 
 TODO  - Channel.collectFile to output what's needed for nf-AnalysesOnCoordinates (BigwigDesign.csv)
+         ## Report one for the rmdup and one for the non rmdup
+LibName;LibBam;LibBW;LibSequenced;LibMapped;LibUnique;LibInsertSize;LibQpcrNorm;LibType;LibProj;LibExp;LibCondition;LibOrder;LibIsControl;LibControl*/
