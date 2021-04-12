@@ -71,6 +71,7 @@ if (!params.merge_bam){
       echo -n \$nb_reads
       """
    }
+   ch_Toreport_trim_nb.view()
 /*
    * Step 1. Trim the reads 
    *   - using trim_galore
