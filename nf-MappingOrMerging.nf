@@ -394,7 +394,7 @@ ch_Toreport_all_stats.collectFile(name:"${params.outdir}/Stats/Mapping_stats.txt
       println "it[0];it[1];it[2];it[3];it[4];it[5];it[6]"
    }
 */
-ch_Toreport_uniq_nb.
+ch_Toreport_uniq_nb
    .join(mapped_uniq_reads_ch)
    .set(ch_report_uniq_nb)
 
