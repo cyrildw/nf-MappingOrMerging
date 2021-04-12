@@ -276,8 +276,6 @@ else {
 process samtools {
    echo true
    tag "$LibName"
-   
-
    publishDir "${params.outdir}/Mapping", mode: 'copy' //params.publish_dir_mode,
 
    input:
@@ -285,7 +283,7 @@ process samtools {
    output:
    file("${prefix}.*.bam*") 
    tuple val(LibName), val(prefix), file("${prefix}.sorted.bam*") into samtooled_ch
-   tuple val(LibName), file("${prefix}.sorted.bam*") into into mapped_reads_ch
+   tuple val(LibName), file("${prefix}.sorted.bam*") into mapped_reads_ch
    tuple val(LibName), val(prefix),  file("${prefix}.sorted.rmdup.bam*") into samtooled_rmdup_ch
    tuple val(LibName), file("${prefix}.sorted.rmdup.bam*") into mapped_uniq_reads_ch
 
