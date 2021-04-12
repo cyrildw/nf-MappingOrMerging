@@ -403,14 +403,12 @@ process _report_nb_uniq_reads {
 	tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), path(bamFiles) from ch_report_uniq_nb
 	output:
 	tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), stdout, path(bamFiles) into ch_Toreport_uniq_insert_size
-
 	script:
 	"""
 	mapped_reads=`samtools view -c ${bamFiles[0]}`
 	echo -n \$mapped_reads
 	"""
 }
-
 process _report_uniq_insert_size {
    tag "$LibName"
    input:
@@ -424,6 +422,7 @@ process _report_uniq_insert_size {
    tail -1 table | awk '{ print \$6}'
    """
 }
+
 ch_Toreport_uniq_stats.collectFile(name:"${params.outdir}/Stats/Mapping_stats.rmdup.txt", newLine:true)
    .subscribe{
       println "it[0];it[1];it[2];it[3];it[4];it[5];it[6]"
