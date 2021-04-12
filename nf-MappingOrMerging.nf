@@ -381,7 +381,7 @@ process _report_insert_size {
    output:
    tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into ch_Toreport_all_stats
    file(table)
-   script
+   script:
    """
    bamPEFragmentSize --bamfiles ${bamFiles[0]} --table table >/dev/null 2>&1
    tail -1 table | awk '{ print \$6}'
@@ -418,7 +418,7 @@ process _report_uniq_insert_size {
    output:
    tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into ch_Toreport_uniq_stats
    file(table)
-   script
+   script:
    """
    bamPEFragmentSize --bamfiles ${bamFiles[0]} --table table >/dev/null 2>&1
    tail -1 table | awk '{ print \$6}'
