@@ -150,7 +150,7 @@ if(params.bowtie_mapping){
       tag "$LibName"
       label 'multiCpu'
       input:
-      tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix, from design_mapping_ch
+      tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix from design_mapping_ch
       path genome from params.genome
       file index from index_ch
 
