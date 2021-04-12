@@ -387,12 +387,12 @@ process _report_insert_size {
    tail -1 table | awk '{ print \$6}'
    """
 }
-/*
+
 ch_Toreport_all_stats.collectFile(name:"${params.outdir}/Stats/Mapping_stats.txt", newLine:true)
    .subscribe{
       println "it[0];it[1];it[2];it[3];it[4];it[5];it[6]"
    }
-*/
+
 ch_Toreport_uniq_nb
    .join(mapped_uniq_reads_ch)
    .set{ch_report_uniq_nb}
@@ -410,7 +410,7 @@ process _report_nb_uniq_reads {
 	echo -n \$mapped_reads
 	"""
 }
-/*
+
 process _report_uniq_insert_size {
    tag "$LibName"
    input:
@@ -428,7 +428,7 @@ ch_Toreport_uniq_stats.collectFile(name:"${params.outdir}/Stats/Mapping_stats.rm
    .subscribe{
       println "it[0];it[1];it[2];it[3];it[4];it[5];it[6]"
    }
-*/
+
 /*process report_stats {
    tag "$LibName .bam"
    publishDir "${params.outdir}/Stats", mode: 'copy'
