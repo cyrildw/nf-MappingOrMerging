@@ -99,7 +99,7 @@ if (!params.merge_bam){
    }
 
 ch_Toreport_trim_nb.join(trimed_reads_ch)
-   .set(ch_report_trim_nb)
+   .set{ch_report_trim_nb}
 
    process _report_Nbtrimreads {
       tag "$LibName"
@@ -356,8 +356,7 @@ process genome_coverage_rmdup {
  */
 ch_Toreport_mapped_nb
    .join(mapped_reads_ch)
-   .view()
-   //.set(ch_report_mapped_nb)
+   .set{ch_report_mapped_nb}
    
 
 /* some issue in the bamPEFragmentSize call
@@ -396,7 +395,7 @@ ch_Toreport_all_stats.collectFile(name:"${params.outdir}/Stats/Mapping_stats.txt
 
 ch_Toreport_uniq_nb
    .join(mapped_uniq_reads_ch)
-   .set(ch_report_uniq_nb)
+   .set{ch_report_uniq_nb}
 
 process _report_nb_uniq_reads {
 	tag "$LibName rmdup.bam"
