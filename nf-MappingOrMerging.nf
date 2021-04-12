@@ -358,7 +358,7 @@ ch_Toreport_mapped_nb
    .set{ch_report_mapped_nb}
    
 
-/* some issue in the bamPEFragmentSize call
+// some issue in the bamPEFragmentSize call
 
 process _report_nb_mapped_reads {
 	tag "$LibName .bam"
@@ -422,7 +422,7 @@ process _report_uniq_insert_size {
    tail -1 table | awk '{ print $6}'
    """
 }
-*/
+
 
 process report_stats {
    tag "$LibName .bam"
