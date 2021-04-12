@@ -67,7 +67,7 @@ if (!params.merge_bam){
       nb_line2=`gunzip -dc ${LibFastq2} | wc -l`
       let nb_reads1=\$nb_line1/4
       let nb_reads2=\$nb_line2/4
-      let nb_reads=\$nbreads1+\$nb_reads2
+      let nb_reads=\$nb_reads1+\$nb_reads2
       echo -n \$nb_reads
       """
    }
@@ -114,7 +114,7 @@ ch_Toreport_trim_nb.join(trimed_reads_ch)
       nb_line2=`gunzip -dc ${LibFastq2} | wc -l`
       let nb_reads1=\$nb_line1/4
       let nb_reads2=\$nb_line2/4
-      let nb_reads=\$nbreads1+\$nb_reads2
+      let nb_reads=\$nb_reads1+\$nb_reads2
       echo -n \$nb_reads
       """
    }
