@@ -379,7 +379,7 @@ process _report_insert_size {
    input:
    tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_insert_size
    output:
-   tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), ${ins_size} into (ch_Toreport_all_stats, ch_ToAoC)
+   tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), val(ins_size) into (ch_Toreport_all_stats, ch_ToAoC)
    file(table)
    script:
    """
