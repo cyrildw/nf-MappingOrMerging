@@ -462,15 +462,15 @@ process _report_mapping_uniq_stats_csv {
 
 
 genCoved_ch.join(ch_ToAoC, by:0).view()
-.toSortedList( { a, b -> a[4] <=> b[4]}) //sorting by input order
-.map{ it -> [it[0], it[2][0], it[3], it[5], it[7], 'NA', it[8], 1, '', '', '', '', '', '', '']}
+.toSortedList( { a, b -> a[4] <=> b[4] }) //sorting by input order
+.map{ it -> [it[0], it[2][0], it[3], it[5], it[7], 'NA',  1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join(";")]}
 .collect()
 .set {ch_report_Aoc}
 
 genCoved_uniq_ch.join(ch_ToAoC_uniq, by:0).view()
 .toSortedList( { a, b -> a[4] <=> b[4]}) //sorting by input order
-.map{ it -> [it[0], it[2][0], it[3], it[5], it[7], it[7], it[8], 1, '', '', '', '', '', '', '']}
+.map{ it -> [it[0], it[2][0], it[3], it[5], it[7], it[7],  1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join(";")]}
 .collect()
 .set {ch_report_Aoc_uniq}
