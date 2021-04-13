@@ -397,6 +397,7 @@ process _report_mapping_stats_csv {
    // echoing all the channel with join('\n') into the mapping_stats.txt file
    script:
    """
+   echo "LibName;Nb_sequenced_read;Nb_trimmed_reads;Nb_mapped_reads;Median_insert_size" > mapping_uniq_stats.txt
    echo "${x.join('\n')}" >> mapping_stats.txt
    """
 }
@@ -429,7 +430,8 @@ process _report_uniq_insert_size {
    script:
    """
    bamPEFragmentSize --bamfiles ${bamFiles[0]} --table table_uniq >/dev/null 2>&1
-   tail -1 table_uniq | awk '{ print \$6}'
+   ins_size=`tail -1 table | awk '{ print \$6}'`
+   echo -n \$ins_size
    """
 }
 
@@ -444,6 +446,7 @@ process _report_mapping_uniq_stats_csv {
    // echoing all the channel with join('\n') into the mapping_stats.txt file
    script:
    """
+   echo "LibName;Nb_sequenced_read;Nb_trimmed_reads;Nb_mapped_reads;Median_insert_size" > mapping_uniq_stats.txt
    echo "${x.join('\n')}" >> mapping_uniq_stats.txt
    """
 }
@@ -471,6 +474,7 @@ process _report_AoC_csv {
    // echoing all the channel with join('\n') into the "${params.name}.bigwigDesign.csv" file
    script:
    """
+   echo "LibName;LibBam;LibBW;LibSequenced;LibMapped;LibUnique;LibInsertSize;LibQpcrNorm;LibType;LibProj;LibExp;LibCondition;LibOrder;LibIsControl;LibControl" > ${params.name}.bigwigDesign.csv
    echo "${x.join('\n')}" >> ${params.name}.bigwigDesign.csv
    """
 }
@@ -484,34 +488,7 @@ process _report_AoC_uniq_csv {
    // echoing all the channel with join('\n') into the "${params.name}.rmdup.bigwigDesign.csv" file
    script:
    """
+   echo "LibName;LibBam;LibBW;LibSequenced;LibMapped;LibUnique;LibInsertSize;LibQpcrNorm;LibType;LibProj;LibExp;LibCondition;LibOrder;LibIsControl;LibControl" > ${params.name}.rmdup.bigwigDesign.csv
    echo "${x.join('\n')}" >> ${params.name}.rmdup.bigwigDesign.csv
    """
 }
-/*process report_stats {
-   tag "$LibName .bam"
-   publishDir "${params.outdir}/Stats", mode: 'copy'
-   input:
-   tuple val(LibName), val(prefix), val(SequencedReads), val(MappedReads), path(bamFiles), path(bwFile) from genCoved_ch
-   output:
-   path("${LibName}.mapped_reads.txt")
-   script:
-   """
-   echo "${LibName};${SequencedReads};${MappedReads};" > ${LibName}.mapped_reads.txt
-   """
-}
-process report_stats_rmdup {
-   tag "$LibName .rmdup.bam"
-   publishDir "${params.outdir}/Stats", mode: 'copy'
-   input:
-   tuple val(LibName), val(prefix), val(SequencedReads), val(MappedReads), path(bamFiles), path(bwFile) from genCoved_rmdup_ch
-   output:
-   path("${LibName}.rmdup.mapped_reads.txt")
-   script:
-   """
-   echo "${LibName};${SequencedReads};${MappedReads};" > ${LibName}.rmdup.mapped_reads.txt
-   """
-}*/
-/* 
-TODO  - Channel.collectFile to output what's needed for nf-AnalysesOnCoordinates (BigwigDesign.csv)
-         ## Report one for the rmdup and one for the non rmdup
-LibName;LibBam;LibBW;LibSequenced;LibMapped;LibUnique;LibInsertSize;LibQpcrNorm;LibType;LibProj;LibExp;LibCondition;LibOrder;LibIsControl;LibControl*/
