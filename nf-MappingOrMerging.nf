@@ -335,7 +335,7 @@ process genome_coverage_rmdup {
    input:
   	tuple val(LibName), val(prefix), path(bamFiles) from samtooled_rmdup_ch
    output:
-	tuple val(LibName), val(prefix), path(bamFiles), path("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into genCoved_rmdup_ch
+	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into genCoved_uniq_ch
 
    """
    bamCoverage \
@@ -448,12 +448,45 @@ process _report_mapping_uniq_stats_csv {
    """
 }
 
-genCoved_ch.join(ch_ToAoC)
+genCoved_ch.join(ch_ToAoC_uniq)
 .map{ it -> [it[0], it[2][0], it[3], it[4], it[6], 'NA', it[7], 1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join(";")]}
 .collect()
 .view()
 .set {ch_report_Aoc}
+
+genCoved_uniq_ch.join(ch_ToAoC)
+.map{ it -> [it[0], it[2][0], it[3], it[4], it[6], it[6], it[7], 1, '', '', '', '', '', '', '']}
+.map{ it -> [it.join(";")]}
+.collect()
+.view()
+.set {ch_report_Aoc_uniq}
+
+process _report_AoC_csv {
+   publishDir "${params.outdir}", mode: 'copy'
+   input:
+   val x from ch_report_Aoc
+   output:
+   path("${name}.bigwigDesign.csv")
+   // echoing all the channel with join('\n') into the "${name}.bigwigDesign.csv" file
+   script:
+   """
+   echo "${x.join('\n')}" >> ${name}.bigwigDesign.csv
+   """
+}
+
+process _report_AoC_uniq_csv {
+   publishDir "${params.outdir}", mode: 'copy'
+   input:
+   val x from ch_report_Aoc_uniq
+   output:
+   path("${name}.rmdup.bigwigDesign.csv")
+   // echoing all the channel with join('\n') into the "${name}.rmdup.bigwigDesign.csv" file
+   script:
+   """
+   echo "${x.join('\n')}" >> ${name}.rmdup.bigwigDesign.csv
+   """
+}
 /*process report_stats {
    tag "$LibName .bam"
    publishDir "${params.outdir}/Stats", mode: 'copy'
