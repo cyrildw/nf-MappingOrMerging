@@ -422,11 +422,11 @@ process _report_uniq_insert_size {
    """
 }
 
-ch_Toreport_uniq_stats.collectFile(name:"${params.outdir}/Stats/Mapping_stats.rmdup.txt", newLine:true)
+/*ch_Toreport_uniq_stats.collectFile(name:"${params.outdir}/Stats/Mapping_stats.rmdup.txt", newLine:true)
    .subscribe{
       println "it[0];it[1];it[2];it[3];it[4];it[5];it[6]"
    }
-
+*/
 /*process report_stats {
    tag "$LibName .bam"
    publishDir "${params.outdir}/Stats", mode: 'copy'
