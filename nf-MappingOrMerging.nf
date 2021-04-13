@@ -311,7 +311,7 @@ process genome_coverage_bam {
    input:
   	tuple val(LibName), val(prefix),  path(bamFiles) from samtooled_ch
    output:
-	tuple val(LibName), val(prefix),  path(bamFiles), path("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into genCoved_ch
+	tuple val(LibName), val(prefix),  bamFiles, val("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into genCoved_ch
 
    """
    bamCoverage \
