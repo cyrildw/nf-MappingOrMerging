@@ -455,14 +455,12 @@ genCoved_ch.join(ch_ToAoC_uniq)
 .map{ it -> [it[0], it[2][0], it[3], it[4], it[6], 'NA', it[7], 1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join(";")]}
 .collect()
-.view()
 .set {ch_report_Aoc}
 
 genCoved_uniq_ch.join(ch_ToAoC)
 .map{ it -> [it[0], it[2][0], it[3], it[4], it[6], it[6], it[7], 1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join(";")]}
 .collect()
-.view()
 .set {ch_report_Aoc_uniq}
 
 process _report_AoC_csv {
