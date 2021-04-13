@@ -443,7 +443,7 @@ process _report_uniq_insert_size {
 
 ch_Toreport_uniq_stats.
 map{ it -> [it[1], [it[0],it[2],it[3],it[4],it[5] ] ] }
-.toSortedList( { a, b -> a[0] <=> b[0]]}) //sorting by input order
+.toSortedList( { a, b -> a[0] <=> b[0] }) //sorting by input order
 .map{ it -> [it[1]]}.view() //removing the index number used for sorting
 .collect()
 .map{it -> [it.join(";")]}.collect().set{ ch_report_uniq_stats} //Joining stats with ";" then use collect to have a single entry channel
