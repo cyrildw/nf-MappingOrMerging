@@ -449,7 +449,7 @@ process _report_mapping_uniq_stats_csv {
 }
 
 genCoved_ch.join(ch_ToAoC)
-.map{ it -> [it[0], it[2][0], it[3], it[4], it[6], 'NA', it[7], 1, '', '', '', '', '', '', ''}]
+.map{ it -> [it[0], it[2][0], it[3], it[4], it[6], 'NA', it[7], 1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join(";")]}
 .collect()
 .view()
