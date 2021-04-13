@@ -390,7 +390,6 @@ process _report_insert_size {
 }
 
 ch_Toreport_all_stats
-.toSortedList( { a, b -> a[1] <=> b[1] })//sorting by input order
 .map{ it -> [it[0],it[2],it[3],it[4],it[5] ]}//removing the index number used for sorting
 .map{it -> [it.join(";")]}.collect().set{ ch_report_all_stats} //Joining stats with ";" then use collect to have a single entry channel
 
@@ -441,11 +440,8 @@ process _report_uniq_insert_size {
    """
 }
 
-ch_Toreport_uniq_stats.
-map{ it -> [it[1], [it[0],it[2],it[3],it[4],it[5] ] ] }
-.toSortedList( { a, b -> a[0] <=> b[0] }).view() //sorting by input order
-.map{ it -> [it[1]]} //removing the index number used for sorting
-.collect()
+ch_Toreport_uniq_stats
+.map{ it -> [it[1], [it[0],it[2],it[3],it[4],it[5] ] ] }
 .map{it -> [it.join(";")]}.collect().set{ ch_report_uniq_stats} //Joining stats with ";" then use collect to have a single entry channel
 
 process _report_mapping_uniq_stats_csv {
@@ -465,27 +461,18 @@ process _report_mapping_uniq_stats_csv {
 
 
 genCoved_ch.join(ch_ToAoC)
-.map{it -> [it[0], it[2][0], it[3],it[4], it[5], it[7], 'NA',it[8],1, '', '', '', '', '', '', '' ]}
-.toSortedList( { a, b -> a[3] <=> b[3] })//sorting by input order
-.map{ it -> [it[0], it[1], it[2], it[4], it[5], it[6], it[7], it[8], it[9], it[10], it[11], it[12], it[13], it[14], it[15] ]}
+.map{ it -> [it[0], it[2][0], it[3], it[5], it[7], 'NA', it[8],  1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join(";")]}
 .collect()
 .set {ch_report_Aoc}
  
-genCoved_uniq_ch.join(ch_ToAoC_uniq, by:0)
-.map{it -> [it[0], it[2][0], it[3],it[4], it[5], it[7], it[7],it[8],1, '', '', '', '', '', '', '' ]}
-.toSortedList( { a, b -> a[3] <=> b[3] })//sorting by input order
-.map{ it -> [it[0], it[1], it[2], it[4], it[5], it[6], it[7], it[8], it[9], it[10], it[11], it[12], it[13], it[14], it[15] ]}
-.map{ it -> [it.join(";")]}
-.collect().view()
-.set {ch_report_Aoc_uniq}
-/*genCoved_uniq_ch.join(ch_ToAoC_uniq, by:0)
-.toSortedList( { a, b -> a[4] <=> b[4]}).view() //sorting by input order
-.map{ it -> [it[0], it[2][0], it[3], it[5], it[7], it[7],  1, '', '', '', '', '', '', '']}
+genCoved_uniq_ch.join(ch_ToAoC_uniq)
+.map{ it -> [it[0], it[2][0], it[3], it[5], it[7], it[7], it[8], 1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join(";")]}
 .collect()
 .set {ch_report_Aoc_uniq}
-*/
+
+
 process _report_AoC_csv {
    publishDir "${params.outdir}", mode: 'copy'
    input:
