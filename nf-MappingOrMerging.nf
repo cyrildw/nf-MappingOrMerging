@@ -38,7 +38,8 @@ if (!params.merge_bam){
    }
    /* Reading design.csv file
     getting 3 values: LibName, LibFastq1, LibFastq2
-    adding 4th value : prefix = LibName.mapper_id.genome_prefix.pe
+    adding the index to keep track of the input order. This value will only be kept in the reporting channels
+    adding 5th value : prefix = LibName.mapper_id.genome_prefix.pe
    */
 i=0;
    Channel
@@ -87,8 +88,8 @@ i=0;
       input:
       tuple val(LibName), val(LibIdx), file(LibFastq1), file(LibFastq2), MappingPrefix from design_reads_csv
       output:
-      tuple val(LibName), val(LibIdx), file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz"), MappingPrefix into design_mapping_ch
-      tuple val(LibName), val(LibIdx), file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz") into trimed_reads_ch
+      tuple val(LibName), file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz"), MappingPrefix into design_mapping_ch 
+      tuple val(LibName), file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz") into trimed_reads_ch //don't need the LibIdx since it's already in the ch_Toreport_trim_nb
       script:
       """
       trim_galore ${params.trim_galore_options} \
@@ -149,12 +150,12 @@ if(params.bowtie_mapping){
       tag "$LibName"
       label 'multiCpu'
       input:
-      tuple val(LibName), val(LibIdx), file(LibFastq1), file(LibFastq2), MappingPrefix from design_mapping_ch
+      tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from design_mapping_ch
       path genome from params.genome
       file index from index_ch
 
       output:
-      tuple val(LibName), val(LibIdx), val(MappingPrefix), file("${MappingPrefix}.bam") into mapping_ch
+      tuple val(LibName),  val(MappingPrefix), file("${MappingPrefix}.bam") into mapping_ch
       val LibName into libName_ch
 
       """
@@ -196,12 +197,12 @@ else if(params.subread_mapping){
       label 'multiCpu_short'
       maxForks 8
       input:
-      tuple val(LibName), val(LibIdx), file(LibFastq1), file(LibFastq2), MappingPrefix from design_mapping_ch
+      tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from design_mapping_ch
       path genome from params.genome
       file index from index_ch
 
       output:
-      tuple val(LibName), val(LibIdx), val(MappingPrefix), file("${MappingPrefix}.bam") into mapping_ch
+      tuple val(LibName), val(MappingPrefix), file("${MappingPrefix}.bam") into mapping_ch
       val LibName into libName_ch
       file("log")
       file("${MappingPrefix}.tmp.bam*")
@@ -254,8 +255,8 @@ else {
       input:
       tuple val(LibExp), val(LibIdx), path(bams) from design_bam_merged
       output:
-      tuple val(LibExp),val(LibIdx), val(MappingPrefix), val("NA"), file("${MappingPrefix}.bam") into mapping_ch
-      tuple val(LibExp),val(LibIdx), val("NA") , val("NA") into (ch_Toreport_mapped_nb, ch_Toreport_uniq_nb) // creating the report channels with unavailable data for nbseq & nb_trim
+      tuple val(LibExp), val(MappingPrefix), file("${MappingPrefix}.bam") into mapping_ch
+      tuple val(LibExp), val(LibIdx), val("NA") , val("NA") into (ch_Toreport_mapped_nb, ch_Toreport_uniq_nb) // creating the report channels with unavailable data for nbseq & nb_trim
       script:
       MappingPrefix="${LibExp}.${params.mapper_id}.${params.genome_prefix}.pe.merged"
       bam_files=bams
@@ -280,13 +281,13 @@ process samtools {
    publishDir "${params.outdir}/Mapping", mode: 'copy' //params.publish_dir_mode,
 
    input:
-   tuple val(LibName), val(LibIdx), val(prefix),  file(RawMapping) from mapping_ch
+   tuple val(LibName),  val(prefix),  file(RawMapping) from mapping_ch
    output:
    file("${prefix}.*.bam*") 
-   tuple val(LibName), val(LibIdx), val(prefix), file("${prefix}.sorted.bam*") into samtooled_ch
-   tuple val(LibName), val(LibIdx), file("${prefix}.sorted.bam*") into mapped_reads_ch
-   tuple val(LibName), val(LibIdx), val(prefix),  file("${prefix}.sorted.rmdup.bam*") into samtooled_rmdup_ch
-   tuple val(LibName), val(LibIdx), file("${prefix}.sorted.rmdup.bam*") into mapped_uniq_reads_ch
+   tuple val(LibName), val(prefix), file("${prefix}.sorted.bam*") into samtooled_ch
+   tuple val(LibName), file("${prefix}.sorted.bam*") into mapped_reads_ch
+   tuple val(LibName), val(prefix),  file("${prefix}.sorted.rmdup.bam*") into samtooled_rmdup_ch
+   tuple val(LibName), file("${prefix}.sorted.rmdup.bam*") into mapped_uniq_reads_ch
 
 	//samtools view -bSh -F 4 -f 3 -q ${params.samtools_q_filter} ${prefix}.raw.sam > ${prefix}.bam
    script:
@@ -311,9 +312,9 @@ process genome_coverage_bam {
                else null
       }
    input:
-  	tuple val(LibName), val(LibIdx), val(prefix),  path(bamFiles) from samtooled_ch
+  	tuple val(LibName), val(prefix), path(bamFiles) from samtooled_ch
    output:
-	tuple val(LibName), val(LibIdx), val(prefix),  bamFiles, val("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into genCoved_ch
+	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into genCoved_ch
 
    """
    bamCoverage \
@@ -335,9 +336,9 @@ process genome_coverage_rmdup {
                else null
       }
    input:
-  	tuple val(LibName), val(LibIdx), val(prefix), path(bamFiles) from samtooled_rmdup_ch
+  	tuple val(LibName), val(prefix), path(bamFiles) from samtooled_rmdup_ch
    output:
-	tuple val(LibName), val(LibIdx), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into genCoved_uniq_ch
+	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into genCoved_uniq_ch
 
    """
    bamCoverage \
@@ -459,16 +460,17 @@ process _report_mapping_uniq_stats_csv {
    """
 }
 
-genCoved_ch.join(ch_ToAoC_uniq)
-.toSortedList( { a, b -> a[1] <=> b[1]}) //sorting by input order
-.map{ it -> [it[0], it[3][0], it[4], it[5], it[7], 'NA', it[8], 1, '', '', '', '', '', '', '']}
+
+genCoved_ch.join(ch_ToAoC)
+.toSortedList( { a, b -> a[4] <=> b[4]}) //sorting by input order
+.map{ it -> [it[0], it[2][0], it[3], it[5], it[7], 'NA', it[8], 1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join(";")]}
 .collect()
 .set {ch_report_Aoc}
 
-genCoved_uniq_ch.join(ch_ToAoC)
-.toSortedList( { a, b -> a[1] <=> b[1]}) //sorting by input order
-.map{ it -> [it[0], it[3][0], it[4], it[5], it[7], it[7], it[8], 1, '', '', '', '', '', '', '']}
+genCoved_uniq_ch.join(ch_ToAoC_uniq)
+.toSortedList( { a, b -> a[4] <=> b[4]}) //sorting by input order
+.map{ it -> [it[0], it[2][0], it[3], it[5], it[7], it[7], it[8], 1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join(";")]}
 .collect()
 .set {ch_report_Aoc_uniq}
