@@ -388,7 +388,7 @@ process _report_insert_size {
    """
 }
 test_ch.view()
-ch_Toreport_all_stats.collectFile(storeDir:"${params.outdir}/Stats/", name:"Mapping_stats.txt", newLine:true).println{ it.text }
+ch_Toreport_all_stats.collectFile(storeDir:"${params.outdir}/Stats/", name:"Mapping_stats.txt", newLine:false).println{ it.join(';') }
 
 ch_Toreport_uniq_nb
    .join(mapped_uniq_reads_ch)
