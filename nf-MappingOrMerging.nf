@@ -448,7 +448,12 @@ process _report_mapping_uniq_stats_csv {
    """
 }
 
-genCoved_ch.join(ch_ToAoC).view()
+genCoved_ch.join(ch_ToAoC)
+.map{ it -> [it[0], it[2][0], it[3], it[4], it[6], 'NA', it[7], 1, '', '', '', '', '', '', ''}]
+.map{ it -> [it.join(";")]}
+.collect()
+.view()
+.set {ch_report_Aoc}
 /*process report_stats {
    tag "$LibName .bam"
    publishDir "${params.outdir}/Stats", mode: 'copy'
