@@ -225,7 +225,7 @@ else if(params.subread_mapping){
       */
 
    }
-}   
+}
 
 }
 else {
@@ -254,6 +254,7 @@ else {
       tuple val(LibExp), path(bams) from design_bam_merged
       output:
       tuple val(LibExp), val(MappingPrefix), val("NA"), file("${MappingPrefix}.bam") into mapping_ch
+      tuple val(LibExp), val("NA") , val("NA") into (ch_Toreport_mapped_nb, ch_Toreport_uniq_nb) // creating the report channels with unavailable data for nbseq & nb_trim
       script:
       MappingPrefix="${LibExp}.${params.mapper_id}.${params.genome_prefix}.pe.merged"
       bam_files=bams
