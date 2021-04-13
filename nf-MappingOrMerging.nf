@@ -388,9 +388,9 @@ process _report_insert_size {
    """
 }
 
-ch_Toreport_all_stats.collectFile(name:"${params.outdir}/Stats/Mapping_stats.txt", newLine:false)
+ch_Toreport_all_stats.collectFile(name:"${params.outdir}/Stats/Mapping_stats.txt", newLine:true)
    .subscribe{
-      println "it[0].text;it[1];it[2];it[3];it[4];it[5];it[6]"
+      println ${it.join(';')}
    }
 
 ch_Toreport_uniq_nb
