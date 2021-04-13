@@ -314,7 +314,7 @@ process genome_coverage_bam {
    input:
   	tuple val(LibName), val(prefix), path(bamFiles) from samtooled_ch
    output:
-	tuple val(LibName), bamFiles[0], val("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into genCoved_ch
+	tuple val(LibName), val(${bamFiles}[0]), val("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into genCoved_ch
    file("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw")
    """
    bamCoverage \
@@ -338,7 +338,7 @@ process genome_coverage_rmdup {
    input:
   	tuple val(LibName), val(prefix), path(bamFiles) from samtooled_rmdup_ch
    output:
-	tuple val(LibName), bamFiles[0], val("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into genCoved_uniq_ch
+	tuple val(LibName), val(${bamFiles}[0]), val("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into genCoved_uniq_ch
    file("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw")
    """
    bamCoverage \
