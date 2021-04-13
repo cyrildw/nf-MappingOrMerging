@@ -379,13 +379,12 @@ process _report_insert_size {
    input:
    tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_insert_size
    output:
-   tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into (ch_Toreport_all_stats, ch_ToAoC)
+   tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), ${ins_size} into (ch_Toreport_all_stats, ch_ToAoC)
    file(table)
    script:
    """
    bamPEFragmentSize --bamfiles ${bamFiles[0]} --table table >/dev/null 2>&1
    ins_size=`tail -1 table | awk '{ print \$6}'`
-   echo -n \$ins_size
    """
 }
 
