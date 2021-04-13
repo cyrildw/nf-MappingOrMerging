@@ -436,8 +436,8 @@ process _report_uniq_insert_size {
    script:
    """
    bamPEFragmentSize --bamfiles ${bamFiles[0]} --table table_uniq >/dev/null 2>&1
-   ins_size=`tail -1 table | awk '{ print \$6}'`
-   echo -n \$ins_size
+   ins_size_uniq=`tail -1 table | awk '{ print \$6}'`
+   echo -n \$ins_size_uniq
    """
 }
 
