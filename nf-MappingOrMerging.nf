@@ -40,11 +40,11 @@ if (!params.merge_bam){
     getting 3 values: LibName, LibFastq1, LibFastq2
     adding 4th value : prefix = LibName.mapper_id.genome_prefix.pe
    */
-
+i=0;
    Channel
       .fromPath(params.input_design)
       .splitCsv(header:true, sep:';')
-      .map { row -> [ row.LibName,  file("$params.input_dir/$row.LibFastq1", checkIfExists: true), file("$params.input_dir/$row.LibFastq2", checkIfExists: true), "$row.LibName.${params.mapper_id}.${params.genome_prefix}"+".pe" ] }
+      .map { row -> [ row.LibName, i++, file("$params.input_dir/$row.LibFastq1", checkIfExists: true), file("$params.input_dir/$row.LibFastq2", checkIfExists: true), "$row.LibName.${params.mapper_id}.${params.genome_prefix}"+".pe" ] }
       .into { design_reads_csv; ch_Toreport_reads_nb }
    
    /* Reporting at multiple steps
@@ -58,9 +58,9 @@ if (!params.merge_bam){
    process _report_Nbseqreads {
       tag "$LibName"
       input:
-      tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix from ch_Toreport_reads_nb
+      tuple val(LibName), LibIdx, file(LibFastq1), file(LibFastq2), MappingPrefix from ch_Toreport_reads_nb
       output:
-      tuple LibName, stdout into ( ch_Toreport_trim_nb, test1_ch )
+      tuple val(LibName), LibIdx, stdout into ( ch_Toreport_trim_nb, test1_ch )
       script:
       """
       nb_line1=`gunzip -dc ${LibFastq1} | wc -l`
@@ -85,10 +85,10 @@ if (!params.merge_bam){
       }
 
       input:
-      tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix from design_reads_csv
+      tuple val(LibName), val(LibIdx), file(LibFastq1), file(LibFastq2), MappingPrefix from design_reads_csv
       output:
-      tuple LibName, file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz"), MappingPrefix into design_mapping_ch
-      tuple LibName, file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz") into trimed_reads_ch
+      tuple val(LibName), val(LibIdx), file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz"), MappingPrefix into design_mapping_ch
+      tuple val(LibName), val(LibIdx), file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz") into trimed_reads_ch
       script:
       """
       trim_galore ${params.trim_galore_options} \
@@ -104,9 +104,9 @@ ch_Toreport_trim_nb.join(trimed_reads_ch)
    process _report_Nbtrimreads {
       tag "$LibName"
       input:
-      tuple LibName,  NbSeqReads, file(LibFastq1), file(LibFastq2) from ch_report_trim_nb
+      tuple val(LibName), val(LibIdx),  NbSeqReads, file(LibFastq1), file(LibFastq2) from ch_report_trim_nb
       output:
-      tuple LibName,  NbSeqReads, stdout into (ch_Toreport_mapped_nb, ch_Toreport_uniq_nb)
+      tuple val(LibName), val(LibIdx),  NbSeqReads, stdout into (ch_Toreport_mapped_nb, ch_Toreport_uniq_nb)
 
       script:
       """
@@ -149,12 +149,12 @@ if(params.bowtie_mapping){
       tag "$LibName"
       label 'multiCpu'
       input:
-      tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix from design_mapping_ch
+      tuple val(LibName), val(LibIdx), file(LibFastq1), file(LibFastq2), MappingPrefix from design_mapping_ch
       path genome from params.genome
       file index from index_ch
 
       output:
-      tuple val(LibName), val(MappingPrefix), file("${MappingPrefix}.bam") into mapping_ch
+      tuple val(LibName), val(LibIdx), val(MappingPrefix), file("${MappingPrefix}.bam") into mapping_ch
       val LibName into libName_ch
 
       """
@@ -196,12 +196,12 @@ else if(params.subread_mapping){
       label 'multiCpu_short'
       maxForks 8
       input:
-      tuple LibName, file(LibFastq1), file(LibFastq2), MappingPrefix from design_mapping_ch
+      tuple val(LibName), val(LibIdx), file(LibFastq1), file(LibFastq2), MappingPrefix from design_mapping_ch
       path genome from params.genome
       file index from index_ch
 
       output:
-      tuple val(LibName), val(MappingPrefix), file("${MappingPrefix}.bam") into mapping_ch
+      tuple val(LibName), val(LibIdx), val(MappingPrefix), file("${MappingPrefix}.bam") into mapping_ch
       val LibName into libName_ch
       file("log")
       file("${MappingPrefix}.tmp.bam*")
@@ -229,17 +229,18 @@ else if(params.subread_mapping){
 
 }
 else {
+   i=0;
    Channel
       .fromPath(params.input_design)
       .splitCsv(header:true, sep:';')
-      .map { row -> [ row.LibName, row.LibExp, file("$params.input_dir/$row.LibBam", checkIfExists: true), file("$params.input_dir/${row.LibBam}.bai", checkIfExists: true), "$row.LibName.${params.mapper_id}.${params.genome_prefix}"+".merged" ] }
+      .map { row -> [ row.LibName, row.LibExp,i++, file("$params.input_dir/$row.LibBam", checkIfExists: true), file("$params.input_dir/${row.LibBam}.bai", checkIfExists: true), "$row.LibName.${params.mapper_id}.${params.genome_prefix}"+".merged" ] }
       .into { design_bam_csv; test_design }
       test_design.view()
 
    design_bam_csv
-      .map{ it -> [it[1], it[2] ]}
+      .map{ it -> [it[1],it[2], it[3] ]}
       .groupTuple(by: 0)
-      .map { it-> [ it[0], it[1].flatten()]}
+      .map { it-> [ it[0], it[1], it[3].flatten()]}
       .set {design_bam_merged}
 
    /* Merge bam from same experiment
@@ -251,10 +252,10 @@ else {
       tag "$LibExp"
       label 'usePicard'
       input:
-      tuple val(LibExp), path(bams) from design_bam_merged
+      tuple val(LibExp), val(LibIdx), path(bams) from design_bam_merged
       output:
-      tuple val(LibExp), val(MappingPrefix), val("NA"), file("${MappingPrefix}.bam") into mapping_ch
-      tuple val(LibExp), val("NA") , val("NA") into (ch_Toreport_mapped_nb, ch_Toreport_uniq_nb) // creating the report channels with unavailable data for nbseq & nb_trim
+      tuple val(LibExp),val(LibIdx), val(MappingPrefix), val("NA"), file("${MappingPrefix}.bam") into mapping_ch
+      tuple val(LibExp),val(LibIdx), val("NA") , val("NA") into (ch_Toreport_mapped_nb, ch_Toreport_uniq_nb) // creating the report channels with unavailable data for nbseq & nb_trim
       script:
       MappingPrefix="${LibExp}.${params.mapper_id}.${params.genome_prefix}.pe.merged"
       bam_files=bams
@@ -279,13 +280,13 @@ process samtools {
    publishDir "${params.outdir}/Mapping", mode: 'copy' //params.publish_dir_mode,
 
    input:
-   tuple val(LibName), val(prefix),  file(RawMapping) from mapping_ch
+   tuple val(LibName), val(LibIdx), val(prefix),  file(RawMapping) from mapping_ch
    output:
    file("${prefix}.*.bam*") 
-   tuple val(LibName), val(prefix), file("${prefix}.sorted.bam*") into samtooled_ch
-   tuple val(LibName), file("${prefix}.sorted.bam*") into mapped_reads_ch
-   tuple val(LibName), val(prefix),  file("${prefix}.sorted.rmdup.bam*") into samtooled_rmdup_ch
-   tuple val(LibName), file("${prefix}.sorted.rmdup.bam*") into mapped_uniq_reads_ch
+   tuple val(LibName), val(LibIdx), val(prefix), file("${prefix}.sorted.bam*") into samtooled_ch
+   tuple val(LibName), val(LibIdx), file("${prefix}.sorted.bam*") into mapped_reads_ch
+   tuple val(LibName), val(LibIdx), val(prefix),  file("${prefix}.sorted.rmdup.bam*") into samtooled_rmdup_ch
+   tuple val(LibName), val(LibIdx), file("${prefix}.sorted.rmdup.bam*") into mapped_uniq_reads_ch
 
 	//samtools view -bSh -F 4 -f 3 -q ${params.samtools_q_filter} ${prefix}.raw.sam > ${prefix}.bam
    script:
@@ -310,9 +311,9 @@ process genome_coverage_bam {
                else null
       }
    input:
-  	tuple val(LibName), val(prefix),  path(bamFiles) from samtooled_ch
+  	tuple val(LibName), val(LibIdx), val(prefix),  path(bamFiles) from samtooled_ch
    output:
-	tuple val(LibName), val(prefix),  bamFiles, val("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into genCoved_ch
+	tuple val(LibName), val(LibIdx), val(prefix),  bamFiles, val("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into genCoved_ch
 
    """
    bamCoverage \
@@ -334,9 +335,9 @@ process genome_coverage_rmdup {
                else null
       }
    input:
-  	tuple val(LibName), val(prefix), path(bamFiles) from samtooled_rmdup_ch
+  	tuple val(LibName), val(LibIdx), val(prefix), path(bamFiles) from samtooled_rmdup_ch
    output:
-	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into genCoved_uniq_ch
+	tuple val(LibName), val(LibIdx), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into genCoved_uniq_ch
 
    """
    bamCoverage \
@@ -361,9 +362,9 @@ ch_Toreport_mapped_nb
 process _report_nb_mapped_reads {
 	tag "$LibName "
 	input:
-	tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), path(bamFiles) from ch_report_mapped_nb
+	tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), path(bamFiles) from ch_report_mapped_nb
 	output:
-	tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), stdout, path(bamFiles) into ch_Toreport_insert_size
+	tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), stdout, path(bamFiles) into ch_Toreport_insert_size
 
 	script:
 	"""
@@ -375,9 +376,9 @@ process _report_nb_mapped_reads {
 process _report_insert_size {
    tag "$LibName"
    input:
-   tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_insert_size
+   tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_insert_size
    output:
-   tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into (ch_Toreport_all_stats, ch_ToAoC)
+   tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into (ch_Toreport_all_stats, ch_ToAoC)
    file(table)
    script:
    """
@@ -387,7 +388,10 @@ process _report_insert_size {
    """
 }
 
-ch_Toreport_all_stats.map{it -> [it.join(";")]}.collect().set{ ch_report_all_stats} //Joining stats with ";" then use collect to have a single entry channel
+ch_Toreport_all_stats
+.toSortedList( { a, b -> a[1] <=> b[1]})//sorting by input order
+.map{ it -> [it[0],it[2]],it[3],it[4],it[5]}//removing the index number used for sorting
+.map{it -> [it.join(";")]}.collect().set{ ch_report_all_stats} //Joining stats with ";" then use collect to have a single entry channel
 
 process _report_mapping_stats_csv {
    publishDir "${params.outdir}/Stats", mode: 'copy'
@@ -412,9 +416,9 @@ ch_Toreport_uniq_nb
 process _report_nb_uniq_reads {
 	tag "$LibName rmdup.bam"
 	input:
-	tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), path(bamFiles) from ch_report_uniq_nb
+	tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), path(bamFiles) from ch_report_uniq_nb
 	output:
-	tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), stdout, path(bamFiles) into ch_Toreport_uniq_insert_size
+	tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), stdout, path(bamFiles) into ch_Toreport_uniq_insert_size
 	script:
 	"""
 	mapped_reads=`samtools view -c ${bamFiles[0]}`
@@ -424,9 +428,9 @@ process _report_nb_uniq_reads {
 process _report_uniq_insert_size {
    tag "$LibName"
    input:
-   tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_uniq_insert_size
+   tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_uniq_insert_size
    output:
-   tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into (ch_Toreport_uniq_stats, ch_ToAoC_uniq)
+   tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into (ch_Toreport_uniq_stats, ch_ToAoC_uniq)
    file(table_uniq)
    script:
    """
@@ -436,7 +440,10 @@ process _report_uniq_insert_size {
    """
 }
 
-ch_Toreport_uniq_stats.map{it -> [it.join(";")]}.collect().set{ ch_report_uniq_stats} //Joining stats with ";" then use collect to have a single entry channel
+ch_Toreport_uniq_stats
+.toSortedList( { a, b -> a[1] <=> b[1]}) //sorting by input order
+.map{ it -> [it[0],it[2]],it[3],it[4],it[5]} //removing the index number used for sorting
+.map{it -> [it.join(";")]}.collect().set{ ch_report_uniq_stats} //Joining stats with ";" then use collect to have a single entry channel
 
 process _report_mapping_uniq_stats_csv {
    publishDir "${params.outdir}/Stats", mode: 'copy'
@@ -453,13 +460,15 @@ process _report_mapping_uniq_stats_csv {
 }
 
 genCoved_ch.join(ch_ToAoC_uniq)
-.map{ it -> [it[0], it[2][0], it[3], it[4], it[6], 'NA', it[7], 1, '', '', '', '', '', '', '']}
+.toSortedList( { a, b -> a[1] <=> b[1]}) //sorting by input order
+.map{ it -> [it[0], it[3][0], it[4], it[5], it[7], 'NA', it[8], 1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join(";")]}
 .collect()
 .set {ch_report_Aoc}
 
 genCoved_uniq_ch.join(ch_ToAoC)
-.map{ it -> [it[0], it[2][0], it[3], it[4], it[6], it[6], it[7], 1, '', '', '', '', '', '', '']}
+.toSortedList( { a, b -> a[1] <=> b[1]}) //sorting by input order
+.map{ it -> [it[0], it[3][0], it[4], it[5], it[7], it[7], it[8], 1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join(";")]}
 .collect()
 .set {ch_report_Aoc_uniq}
