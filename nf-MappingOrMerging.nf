@@ -480,11 +480,11 @@ process _report_AoC_uniq_csv {
    input:
    val x from ch_report_Aoc_uniq
    output:
-   path("${name}.rmdup.bigwigDesign.csv")
-   // echoing all the channel with join('\n') into the "${name}.rmdup.bigwigDesign.csv" file
+   path("${params.name}.rmdup.bigwigDesign.csv")
+   // echoing all the channel with join('\n') into the "${params.name}.rmdup.bigwigDesign.csv" file
    script:
    """
-   echo "${x.join('\n')}" >> ${name}.rmdup.bigwigDesign.csv
+   echo "${x.join('\n')}" >> ${params.name}.rmdup.bigwigDesign.csv
    """
 }
 /*process report_stats {
