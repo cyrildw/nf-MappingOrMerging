@@ -357,8 +357,6 @@ ch_Toreport_mapped_nb
    .set{ch_report_mapped_nb}
    
 
-// some issue in the bamPEFragmentSize call
-
 process _report_nb_mapped_reads {
 	tag "$LibName "
 	input:
@@ -378,7 +376,7 @@ process _report_insert_size {
    input:
    tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_insert_size
    output:
-   tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into (ch_Toreport_all_stats, test_ch)
+   tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into (ch_Toreport_all_stats, ch_ToAoC)
    file(table)
    script:
    """
@@ -387,8 +385,23 @@ process _report_insert_size {
    echo -n \$ins_size
    """
 }
-test_ch.view()
-ch_Toreport_all_stats.collectFile(storeDir:"${params.outdir}/Stats/", name:"Mapping_stats.txt", newLine:false).println{ it.join(';') }
+
+ch_Toreport_all_stats.map{it -> [it.join(";")]}.collect().set{ ch_report_all_stats} //Joining stats with ";" then use collect to have a single entry channel
+
+process _report_mapping_stats_csv {
+   publishDir "${params.outdir}/Stats", mode: 'copy'
+   input:
+   val x from ch_report_all_stats
+   output:
+   path("mapping_stats.txt")
+   // echoing all the channel with join('\n') into the mapping_stats.txt file
+   script:
+   """
+   echo "${x.join('\n')}" >> mapping_stats.txt
+   """
+}
+
+
 
 ch_Toreport_uniq_nb
    .join(mapped_uniq_reads_ch)
@@ -411,7 +424,7 @@ process _report_uniq_insert_size {
    input:
    tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_uniq_insert_size
    output:
-   tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into ch_Toreport_uniq_stats
+   tuple val(LibName),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into (ch_Toreport_uniq_stats, ch_ToAoC_uniq)
    file(table_uniq)
    script:
    """
@@ -420,11 +433,22 @@ process _report_uniq_insert_size {
    """
 }
 
-/*ch_Toreport_uniq_stats.collectFile(name:"${params.outdir}/Stats/Mapping_stats.rmdup.txt", newLine:true)
-   .subscribe{
-      println "it[0];it[1];it[2];it[3];it[4];it[5];it[6]"
-   }
-*/
+ch_Toreport_uniq_stats.map{it -> [it.join(";")]}.collect().set{ ch_report_uniq_stats} //Joining stats with ";" then use collect to have a single entry channel
+
+process _report_mapping_uniq_stats_csv {
+   publishDir "${params.outdir}/Stats", mode: 'copy'
+   input:
+   val x from ch_report_all_stats
+   output:
+   path("mapping_uniq_stats.txt")
+   // echoing all the channel with join('\n') into the mapping_stats.txt file
+   script:
+   """
+   echo "${x.join('\n')}" >> mapping_uniq_stats.txt
+   """
+}
+
+genCoved_ch.join(ch_ToAoC).view()
 /*process report_stats {
    tag "$LibName .bam"
    publishDir "${params.outdir}/Stats", mode: 'copy'
