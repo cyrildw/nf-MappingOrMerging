@@ -470,7 +470,7 @@ genCoved_ch.join(ch_ToAoC, by:0)
 .set {ch_report_Aoc}
 
 genCoved_uniq_ch.join(ch_ToAoC_uniq, by:0)
-.map{it -> [it[0], it[2][0], it[3],it[4], it[5], it[7], 'NA',it[8] ]}
+.map{it -> [it[0], it[2][0], it[3],it[4], it[5], it[7], 'NA',it[8] ]}.view()
 .toSortedList( { a, b -> a[4] <=> b[4] })//sorting by input order
 .map{ it -> [it[0], it[1], it[2], it[4], it[5], it[6], it[7],  1, '', '', '', '', '', '', '']}
 .collect().view()
