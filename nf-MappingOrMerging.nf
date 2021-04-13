@@ -397,7 +397,7 @@ process _report_mapping_stats_csv {
    // echoing all the channel with join('\n') into the mapping_stats.txt file
    script:
    """
-   echo "LibName;Nb_sequenced_read;Nb_trimmed_reads;Nb_mapped_reads;Median_insert_size" > mapping_uniq_stats.txt
+   echo "LibName;Nb_sequenced_read;Nb_trimmed_reads;Nb_mapped_reads;Median_insert_size" > mapping_stats.txt
    echo "${x.join('\n')}" >> mapping_stats.txt
    """
 }
