@@ -464,7 +464,8 @@ process _report_mapping_uniq_stats_csv {
 genCoved_ch.join(ch_ToAoC, by:0)
 .map{it -> [it[0], it[2][0], it[3],it[4], it[5], it[7], 'NA',it[8],1, '', '', '', '', '', '', '' ]}
 .toSortedList( { a, b -> a[3] <=> b[3] })//sorting by input order
-.map{ it -> [it[0], it[1], it[2], it[4], it[5], it[6], it[7], it[8], it[9], it[10], it[11], it[12], it[13], it[14], it[15] ]}.map{ it -> [it.join(";")]}
+.map{ it -> [it[0], it[1], it[2], it[4], it[5], it[6], it[7], it[8], it[9], it[10], it[11], it[12], it[13], it[14], it[15] ]}
+.map{ it -> [it.join(";")]}
 .collect()
 .set {ch_report_Aoc}
 
@@ -472,6 +473,7 @@ genCoved_uniq_ch.join(ch_ToAoC_uniq, by:0)
 .map{it -> [it[0], it[2][0], it[3],it[4], it[5], it[7], it[7],it[8],1, '', '', '', '', '', '', '' ]}
 .toSortedList( { a, b -> a[3] <=> b[3] })//sorting by input order
 .map{ it -> [it[0], it[1], it[2], it[4], it[5], it[6], it[7], it[8], it[9], it[10], it[11], it[12], it[13], it[14], it[15] ]}
+.map{ it -> [it.join(";")]}
 .collect().view()
 .set {ch_report_Aoc_uniq}
 /*genCoved_uniq_ch.join(ch_ToAoC_uniq, by:0)
