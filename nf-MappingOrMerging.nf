@@ -467,11 +467,11 @@ process _report_AoC_csv {
    input:
    val x from ch_report_Aoc
    output:
-   path("${name}.bigwigDesign.csv")
-   // echoing all the channel with join('\n') into the "${name}.bigwigDesign.csv" file
+   path("${params.name}.bigwigDesign.csv")
+   // echoing all the channel with join('\n') into the "${params.name}.bigwigDesign.csv" file
    script:
    """
-   echo "${x.join('\n')}" >> ${name}.bigwigDesign.csv
+   echo "${x.join('\n')}" >> ${params.name}.bigwigDesign.csv
    """
 }
 
