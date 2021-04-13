@@ -389,8 +389,8 @@ process _report_insert_size {
 }
 
 ch_Toreport_all_stats
-.toSortedList( { a, b -> a[1] <=> b[1]})//sorting by input order
-.map{ it -> [it[0],it[2],it[3],it[4],it[5]}//removing the index number used for sorting
+.toSortedList( { a, b -> a[1] <=> b[1] })//sorting by input order
+.map{ it -> [it[0],it[2],it[3],it[4],it[5] ]}//removing the index number used for sorting
 .map{it -> [it.join(";")]}.collect().set{ ch_report_all_stats} //Joining stats with ";" then use collect to have a single entry channel
 
 process _report_mapping_stats_csv {
@@ -442,7 +442,7 @@ process _report_uniq_insert_size {
 
 ch_Toreport_uniq_stats
 .toSortedList( { a, b -> a[1] <=> b[1]}) //sorting by input order
-.map{ it -> [it[0],it[2],it[3],it[4],it[5]} //removing the index number used for sorting
+.map{ it -> [it[0],it[2],it[3],it[4],it[5] ]} //removing the index number used for sorting
 .map{it -> [it.join(";")]}.collect().set{ ch_report_uniq_stats} //Joining stats with ";" then use collect to have a single entry channel
 
 process _report_mapping_uniq_stats_csv {
