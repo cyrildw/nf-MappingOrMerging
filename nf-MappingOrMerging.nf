@@ -383,11 +383,12 @@ process _report_insert_size {
    script:
    """
    bamPEFragmentSize --bamfiles ${bamFiles[0]} --table table >/dev/null 2>&1
-   tail -1 table | awk '{ print \$6}'
+   ins_size=tail -1 table | awk '{ print \$6}'
+   echo -n \$ins_size
    """
 }
 
-ch_Toreport_all_stats.collectFile(storeDir:"${params.outdir}/Stats/", name:"Mapping_stats.txt", newLine:true)
+ch_Toreport_all_stats.collectFile(storeDir:"${params.outdir}/Stats/", name:"Mapping_stats.txt", newLine:true).println{ it.text }
 
 ch_Toreport_uniq_nb
    .join(mapped_uniq_reads_ch)
