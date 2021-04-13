@@ -462,19 +462,26 @@ process _report_mapping_uniq_stats_csv {
 
 
 genCoved_ch.join(ch_ToAoC, by:0)
+.map{it -> [it[0], it[2][0], it[3],it[4], it[5], it[7], 'NA',it[8] ]}
 .toSortedList( { a, b -> a[4] <=> b[4] })//sorting by input order
-.map{ it -> [it[0], it[2][0], it[3], it[5], it[7], 'NA',  1, '', '', '', '', '', '', '']}
+.map{ it -> [it[0], it[1], it[2], it[4], it[5], it[6], it[7],  1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join(";")]}
 .collect()
 .set {ch_report_Aoc}
 
 genCoved_uniq_ch.join(ch_ToAoC_uniq, by:0)
+.map{it -> [it[0], it[2][0], it[3],it[4], it[5], it[7], 'NA',it[8] ]}
+.toSortedList( { a, b -> a[4] <=> b[4] })//sorting by input order
+.map{ it -> [it[0], it[1], it[2], it[4], it[5], it[6], it[7],  1, '', '', '', '', '', '', '']}
+.collect()
+.set {ch_report_Aoc_uniq}
+/*genCoved_uniq_ch.join(ch_ToAoC_uniq, by:0)
 .toSortedList( { a, b -> a[4] <=> b[4]}).view() //sorting by input order
 .map{ it -> [it[0], it[2][0], it[3], it[5], it[7], it[7],  1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join(";")]}
 .collect()
 .set {ch_report_Aoc_uniq}
-
+*/
 process _report_AoC_csv {
    publishDir "${params.outdir}", mode: 'copy'
    input:
