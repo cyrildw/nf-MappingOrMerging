@@ -461,13 +461,13 @@ process _report_mapping_uniq_stats_csv {
 
 
 genCoved_ch.join(ch_ToAoC)
-.map{ it -> [it[1],it[0], it[2][0], it[3], it[5], it[7], 'NA', it[8],  1, '', '', '', '', '', '', '']}
+.map{ it -> [it[1], it[0], it[2][0], it[3], it[5], it[7], 'NA', it[8],  1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join("\t")]}
 .collect()
 .set {ch_report_Aoc}
  
 genCoved_uniq_ch.join(ch_ToAoC_uniq)
-.map{ it -> [[it[1],it[0], it[2][0], it[3], it[5], it[7], it[7], it[8], 1, '', '', '', '', '', '', '']}
+.map{ it -> [it[1], it[0], it[2][0], it[3], it[5], it[7], it[7], it[8], 1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join("\t")]}
 .collect()
 .set {ch_report_Aoc_uniq}
