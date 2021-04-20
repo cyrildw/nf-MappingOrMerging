@@ -483,7 +483,7 @@ process _report_AoC_csv {
    script:
    """
    echo "LibName;LibBam;LibBW;LibSequenced;LibMapped;LibUnique;LibInsertSize;LibQpcrNorm;LibType;LibProj;LibExp;LibCondition;LibOrder;LibIsControl;LibControl" > ${params.name}.bigwigDesign.csv
-   echo "${x.join('\n')}"  \ sort -k1 | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> ${params.name}.bigwigDesign.csv
+   echo "${x.join('\n')}"  | sort -k1 | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> ${params.name}.bigwigDesign.csv
    """
 }
 
