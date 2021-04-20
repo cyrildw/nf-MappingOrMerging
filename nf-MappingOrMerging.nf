@@ -13,6 +13,11 @@
    - map on the normal genome
    - calculate SpikeIn normalization ratio
 4] Add more in the configuration file
+   - mapper options :
+         - bowtie2 (very-sensitive etc)
+         - subread
+   - samtools options (-F 4 -f 3)
+   - bamCoverage options (indluding bins)
 5] Think, if necessary ? how to automatically configure for CNRS vs CEA cluster, for file localization.
 
 Merging bam files : 
@@ -403,7 +408,7 @@ process _report_mapping_stats_csv {
    script:
    """
    echo "LibName;Nb_sequenced_read;Nb_trimmed_reads;Nb_mapped_reads;Median_insert_size" > mapping_stats.txt
-   echo "${x.join('\n')}" | sort -k1 | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> mapping_uniq_stats.txt
+   echo "${x.join('\n')}" | sort -k1 | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> mapping_stats.txt
    """
 }
 
@@ -458,7 +463,10 @@ process _report_mapping_uniq_stats_csv {
    """
 }
 
-
+/*
+   PRODUCING csv files that serves as input design for nf-AnalysesOnCoordinates.nf
+      This should be updated in aggreement with the subsequent pipeline.
+*/
 
 genCoved_ch.join(ch_ToAoC)
 .map{ it -> [it[4], it[0], it[2][0], it[3], it[5], it[7], 'NA', it[8],  1, '', '', '', '', '', '', '']}
