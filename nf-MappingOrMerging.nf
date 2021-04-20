@@ -442,7 +442,7 @@ process _report_uniq_insert_size {
 
 ch_Toreport_uniq_stats
 .map{ it -> [it[1],it[0],it[2],it[3],it[4],it[5]  ] }
-.map{it -> [it.join("\t")]}.collect().view().set{ ch_report_uniq_stats} //Joining stats with ";" then use collect to have a single entry channel
+.map{it -> [it.join("\t")]}.collect().set{ ch_report_uniq_stats} //Joining stats with ";" then use collect to have a single entry channel
 
 process _report_mapping_uniq_stats_csv {
    publishDir "${params.outdir}/Stats", mode: 'copy'
