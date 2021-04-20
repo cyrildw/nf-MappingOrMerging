@@ -390,8 +390,8 @@ process _report_insert_size {
 }
 
 ch_Toreport_all_stats
-.map{ it -> [it[0],it[2],it[3],it[4],it[5] ]}//removing the index number used for sorting
-.map{it -> [it.join(";")]}.collect().set{ ch_report_all_stats} //Joining stats with ";" then use collect to have a single entry channel
+.map{ it -> [it[1],it[0],it[2],it[3],it[4],it[5]  ] }
+.map{it -> [it.join("\t")]}.collect().set{ ch_report_all_stats} //Joining stats with ";" then use collect to have a single entry channel
 
 process _report_mapping_stats_csv {
    publishDir "${params.outdir}/Stats", mode: 'copy'
@@ -403,7 +403,7 @@ process _report_mapping_stats_csv {
    script:
    """
    echo "LibName;Nb_sequenced_read;Nb_trimmed_reads;Nb_mapped_reads;Median_insert_size" > mapping_stats.txt
-   echo "${x.join('\n')}" >> mapping_stats.txt
+   echo "${x.join('\n')}" | sort -k1 | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> mapping_uniq_stats.txt
    """
 }
 
@@ -461,14 +461,14 @@ process _report_mapping_uniq_stats_csv {
 
 
 genCoved_ch.join(ch_ToAoC)
-.map{ it -> [it[0], it[2][0], it[3], it[5], it[7], 'NA', it[8],  1, '', '', '', '', '', '', '']}
-.map{ it -> [it.join(";")]}
+.map{ it -> [it[1],it[0], it[2][0], it[3], it[5], it[7], 'NA', it[8],  1, '', '', '', '', '', '', '']}
+.map{ it -> [it.join("\t")]}
 .collect()
 .set {ch_report_Aoc}
  
 genCoved_uniq_ch.join(ch_ToAoC_uniq)
-.map{ it -> [it[0], it[2][0], it[3], it[5], it[7], it[7], it[8], 1, '', '', '', '', '', '', '']}
-.map{ it -> [it.join(";")]}
+.map{ it -> [[it[1],it[0], it[2][0], it[3], it[5], it[7], it[7], it[8], 1, '', '', '', '', '', '', '']}
+.map{ it -> [it.join("\t")]}
 .collect()
 .set {ch_report_Aoc_uniq}
 
@@ -483,7 +483,7 @@ process _report_AoC_csv {
    script:
    """
    echo "LibName;LibBam;LibBW;LibSequenced;LibMapped;LibUnique;LibInsertSize;LibQpcrNorm;LibType;LibProj;LibExp;LibCondition;LibOrder;LibIsControl;LibControl" > ${params.name}.bigwigDesign.csv
-   echo "${x.join('\n')}" >> ${params.name}.bigwigDesign.csv
+   echo "${x.join('\n')}" | sort -k1 | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> ${params.name}.bigwigDesign.csv
    """
 }
 
@@ -497,6 +497,6 @@ process _report_AoC_uniq_csv {
    script:
    """
    echo "LibName;LibBam;LibBW;LibSequenced;LibMapped;LibUnique;LibInsertSize;LibQpcrNorm;LibType;LibProj;LibExp;LibCondition;LibOrder;LibIsControl;LibControl" > ${params.name}.rmdup.bigwigDesign.csv
-   echo "${x.join('\n')}" >> ${params.name}.rmdup.bigwigDesign.csv
+  echo "${x.join('\n')}" | sort -k1 | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> ${params.name}.rmdup.bigwigDesign.csv
    """
 }
