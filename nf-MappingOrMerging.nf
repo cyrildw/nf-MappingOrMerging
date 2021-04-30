@@ -169,7 +169,7 @@ if(params.bowtie_mapping){
       --threads ${task.cpus} \
       -x genome.index \
       -1 ${LibFastq1} \
-      -2 ${LibFastq2} 2>/dev/null | samtools view -bSh -F 4 -f 3 -q ${params.samtools_q_filter} - > ${MappingPrefix}.bam 
+      -2 ${LibFastq2} 2>/dev/null | samtools view -bSh ${samtools_flag_filter} -q ${params.samtools_q_filter} - > ${MappingPrefix}.bam 
       """
       //-S ${MappingPrefix}.raw.sam 
       /*
@@ -221,7 +221,7 @@ else if(params.subread_mapping){
       -r ${LibFastq1} \
       -R ${LibFastq2} \
       --multiMapping -B 3 \
-      -o ${MappingPrefix}.tmp.bam &>log && samtools view -bh -F 4 -f 3 -q ${params.samtools_q_filter} ${MappingPrefix}.tmp.bam  > ${MappingPrefix}.bam
+      -o ${MappingPrefix}.tmp.bam &>log && samtools view -bh ${params.samtools_flag_filter} -q ${params.samtools_q_filter} ${MappingPrefix}.tmp.bam  > ${MappingPrefix}.bam
       """
 
       //-S ${MappingPrefix}.raw.sam 
@@ -325,9 +325,7 @@ process genome_coverage_bam {
    bamCoverage \
    -b ${bamFiles[0]} \
    -o ${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw -of bigwig \
-   --extendReads --centerReads --samFlagInclude 3 \
-   --scaleFactor 1 --normalizeUsing CPM  --exactScaling \
-   --binSize ${params.bin_size} -p ${task.cpus}
+   ${params.bamcoverage_options} --binSize ${params.bin_size} -p ${task.cpus}
    """
 }
 //--effectiveGenomeSize 12157105 
@@ -349,9 +347,7 @@ process genome_coverage_rmdup {
    bamCoverage \
    -b ${bamFiles[0]} \
    -o ${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw -of bigwig \
-   --extendReads --centerReads --samFlagInclude 3 \
-   --scaleFactor 1 --normalizeUsing CPM  --exactScaling \
-   --binSize ${params.bin_size} -p ${task.cpus}
+   ${params.bamcoverage_options} --binSize ${params.bin_size} -p ${task.cpus}
    """
 }
 
