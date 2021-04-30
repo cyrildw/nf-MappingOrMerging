@@ -169,7 +169,7 @@ if(params.bowtie_mapping){
       --threads ${task.cpus} \
       -x genome.index \
       -1 ${LibFastq1} \
-      -2 ${LibFastq2} 2>/dev/null | samtools view -bSh ${samtools_flag_filter} -q ${params.samtools_q_filter} - > ${MappingPrefix}.bam 
+      -2 ${LibFastq2} 2>/dev/null | samtools view -bSh ${params.samtools_flag_filter} -q ${params.samtools_q_filter} - > ${MappingPrefix}.bam 
       """
       //-S ${MappingPrefix}.raw.sam 
       /*
