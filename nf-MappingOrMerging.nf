@@ -14,10 +14,10 @@
    - calculate SpikeIn normalization ratio
 4] Add more in the configuration file
    - mapper options :
-         - bowtie2 (very-sensitive etc)
+TODO     - bowtie2 (very-sensitive etc)
          - subread
-   - samtools options (-F 4 -f 3)
-   - bamCoverage options (indluding bins)
+OK   - samtools options (-F 4 -f 3)
+OK   - bamCoverage options (indluding bins)
 5] Think, if necessary ? how to automatically configure for CNRS vs CEA cluster, for file localization.
 
 Merging bam files : 
