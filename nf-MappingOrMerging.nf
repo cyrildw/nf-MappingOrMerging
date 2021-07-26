@@ -44,13 +44,13 @@ if (!params.merge_bam){
    /* Reading design.csv file
     getting 3 values: LibName, LibFastq1, LibFastq2
     adding the index to keep track of the input order. This value will only be kept in the reporting channels
-    adding 5th value : prefix = LibName.mapper_id.genome_prefix.pe
+    adding 5th value : prefix = LibName.mapper_id.ref_genome_prefix.pe
    */
 i=0;
    Channel
       .fromPath(params.input_design)
       .splitCsv(header:true, sep:';')
-      .map { row -> [ row.LibName, i++, file("$params.input_dir/$row.LibFastq1", checkIfExists: true), file("$params.input_dir/$row.LibFastq2", checkIfExists: true), "$row.LibName.${params.mapper_id}.${params.genome_prefix}"+".pe" ] }
+      .map { row -> [ row.LibName, i++, file("$params.input_dir/$row.LibFastq1", checkIfExists: true), file("$params.input_dir/$row.LibFastq2", checkIfExists: true), "$row.LibName.${params.mapper_id}.${params.ref_genome_prefix}"+".pe" ] }
       .into { design_reads_csv; ch_Toreport_reads_nb }
    
    /* Reporting at multiple steps
@@ -131,14 +131,14 @@ if(params.bowtie_mapping){
    /*
    * Step 2. Builds the genome index required by the mapping process
    TODO   - check if genome is already indexed
-   TODO   - checkIfExists file basedir(params.genome)/params.genome_prefix.1.bt2,2.bt2, 3.bt2, 4.bt2, rev.1.bt2, rev.2.bt2
+   TODO   - checkIfExists file basedir(params.genome)/params.ref_genome_prefix.1.bt2,2.bt2, 3.bt2, 4.bt2, rev.1.bt2, rev.2.bt2
    TODO    - see https://github.com/SciLifeLab/NGI-smRNAseq/blob/master/main.nf
    */
    process buildIndexBT {
       tag "$genome.baseName"
       label "multiCpu"
       input:
-      path genome from params.genome
+      path genome from params.ref_genome
          
       output:
       path 'genome.index*' into index_ch
@@ -239,7 +239,7 @@ else {
    Channel
       .fromPath(params.input_design)
       .splitCsv(header:true, sep:';')
-      .map { row -> [ row.LibName, row.LibExp,i++, file("$params.input_dir/$row.LibBam", checkIfExists: true), file("$params.input_dir/${row.LibBam}.bai", checkIfExists: true), "$row.LibName.${params.mapper_id}.${params.genome_prefix}"+".merged" ] }
+      .map { row -> [ row.LibName, row.LibExp,i++, file("$params.input_dir/$row.LibBam", checkIfExists: true), file("$params.input_dir/${row.LibBam}.bai", checkIfExists: true), "$row.LibName.${params.mapper_id}.${params.ref_genome_prefix}"+".merged" ] }
       .into { design_bam_csv; test_design }
       test_design.view()
 
@@ -263,7 +263,7 @@ else {
       tuple val(LibExp), val(MappingPrefix), file("${MappingPrefix}.bam") into mapping_ch
       tuple val(LibExp), val(LibIdx), val("NA") , val("NA") into (ch_Toreport_mapped_nb, ch_Toreport_uniq_nb) // creating the report channels with unavailable data for nbseq & nb_trim
       script:
-      MappingPrefix="${LibExp}.${params.mapper_id}.${params.genome_prefix}.pe.merged"
+      MappingPrefix="${LibExp}.${params.mapper_id}.${params.ref_genome_prefix}.pe.merged"
       bam_files=bams
       //bam_files=bams.findAll { it.toString().endsWith('.bam')}.sort()
       """
