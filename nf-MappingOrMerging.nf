@@ -395,16 +395,14 @@ if(params.spike-in_norm){
       val(ref_seq_ids) from ref_genome_seq_id_ch.collect()
       val(si_seq_ids) from spike-in_genome_seq_id_ch.collect()
       output:
-      tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.bam*") into samtooled_ch
-      tuple val(LibName), file("${prefix}.sorted.bam*") into mapped_reads_ch
+      tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.bam*"), val(stdout) into to_bamCov_ch
+      tuple val(LibName), file("${prefix}.sorted.bam*") into to_count_mapped_reads_ch
       path "${prefix}.split_spike-in.sorted.bam*"
       path "tmp.bam"
       path "header.txt"
       path "header_ref.txt"
       path "header_spike-in.txt"
-      val stdout
-
-      
+            
       // Getting the header & counting the total number of mapped reads.
       // Extracting reads mapping on the ref_genome, creating a correct header then rehead and index the mapping file and count mapped reads
       // Extracting reads mapping on the spike-in_genome, creating a correct header then rehead and index the mapping file and count mapped reads
@@ -429,7 +427,11 @@ if(params.spike-in_norm){
    }
 }
 else{
-   //Set the channels as the ouput of samtools process
+   //Set the channels as the ouput of samtools process, adding 1 as scale factor
+   samtooled_ch.map{ it -> [it[0],it[1],it[2],0 ] }.set{to_bamCov_ch}
+   mapped_reads_ch.set{to_count_mapped_reads_ch}
+   samtooled_rmdup_ch.map{ it -> [it[0],it[1],it[2],0 ] }.set{to_bamCov_rmdup_ch}
+   mapped_uniq_reads_ch.set{to_count_uniq_mapped_reads_ch}
 }
 
 process genome_coverage_bam {
@@ -441,16 +443,26 @@ process genome_coverage_bam {
                else null
       }
    input:
-  	tuple val(LibName), val(prefix), path(bamFiles) from samtooled_ch
+  	tuple val(LibName), val(prefix), path(bamFiles), val(scaleF) from to_bamCov_ch
    output:
 	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into genCoved_ch
    file("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw")
+   if(!params.spike-in_norm){
    """
    bamCoverage \
    -b ${bamFiles[0]} \
    -o ${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw -of bigwig \
    ${params.bamcoverage_options} --binSize ${params.bin_size} -p ${task.cpus}
    """
+   }
+   if(params.spike-in_norm){
+   """
+   bamCoverage \
+   -b ${bamFiles[0]} \
+   -o ${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw -of bigwig \
+   ${params.bamcoverage_options} --scaleFactor ${scaleF} --binSize ${params.bin_size} -p ${task.cpus}
+   """
+   }
 }
 //--effectiveGenomeSize 12157105 
 
@@ -463,16 +475,26 @@ process genome_coverage_rmdup {
                else null
       }
    input:
-  	tuple val(LibName), val(prefix), path(bamFiles) from samtooled_rmdup_ch
+  	tuple val(LibName), val(prefix), path(bamFiles), val(scaleF) from to_bamCov_rmdup_ch
    output:
 	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into genCoved_uniq_ch
    file("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") 
+   if(!params.spike-in_norm){
    """
    bamCoverage \
    -b ${bamFiles[0]} \
    -o ${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw -of bigwig \
    ${params.bamcoverage_options} --binSize ${params.bin_size} -p ${task.cpus}
    """
+   }
+   if(params.spike-in_norm){
+   """
+    bamCoverage \
+   -b ${bamFiles[0]} \
+   -o ${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw -of bigwig \
+   ${params.bamcoverage_options} --scaleFactor ${scaleF}  --binSize ${params.bin_size} -p ${task.cpus}
+   """
+   }
 }
 
 /*
@@ -481,7 +503,7 @@ process genome_coverage_rmdup {
  *       - for .bam           -for .rmdup.bam
  */
 ch_Toreport_mapped_nb
-   .join(mapped_reads_ch)
+   .join(to_count_mapped_reads_ch)
    .set{ch_report_mapped_nb}
    
 
@@ -535,7 +557,7 @@ process _report_mapping_stats_csv {
 
 
 ch_Toreport_uniq_nb
-   .join(mapped_uniq_reads_ch)
+   .join(to_count_uniq_mapped_reads_ch)
    .set{ch_report_uniq_nb}
 
 process _report_nb_uniq_reads {
