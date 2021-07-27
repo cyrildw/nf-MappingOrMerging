@@ -162,8 +162,8 @@ if(params.spike_in_norm){
       output:
       path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into ref_to_index_ch
       path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into mapping_ref_ch
-      path "${params.ref_genome_prefix}.seq_ids.txt" into ref_genome_seq_id_ch
-      path "${params.spike_in_genome_prefix}.seq_ids.txt" into spike_in_genome_seq_id_ch
+      path "${params.ref_genome_prefix}.seq_ids.txt" into (ref_genome_seq_id_ch, ref_genome_seq_id_4uniq_ch, test2_ch)
+      path "${params.spike_in_genome_prefix}.seq_ids.txt" into (spike_in_genome_seq_id_ch, spike_in_genome_seq_id_4uniq_ch)
       
       """
       cat ${ref_genome} ${spike_in_genome} > ${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa
@@ -171,6 +171,7 @@ if(params.spike_in_norm){
       grep ">" ${spike_in_genome} | sed 's/>\\([^[:blank:]]*\\)[[:blank:]]*.*/\\1/g' > ${params.spike_in_genome_prefix}.seq_ids.txt
       """
    }
+   test2_ch.view()
    
 }
 else if(!params.spike_in_norm){
@@ -427,6 +428,42 @@ if(params.spike_in_norm){
       echo $NORM_FACTOR
       """
    }
+   process si_mapping_uniq_split{
+   input:
+   tuple val(LibName), val(prefix), path(bamFiles) from samtooled_rmdup_ch
+   val(ref_seq_ids) from ref_genome_seq_id_4uniq_ch.collect()
+   val(si_seq_ids) from spike_in_genome_seq_id_4uniq_ch.collect()
+   output:
+   tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.rmdup.bam*"), val(stdout) into to_bamCov_rmdup_ch
+   tuple val(LibName), file("${prefix}.sorted.rmdup.bam*") into to_count_uniq_mapped_reads_ch
+   path "${prefix}.split_spike_in.sorted.rmdup.bam*"
+   path "tmp.bam"
+   path "header.txt"
+   path "header_ref.txt"
+   path "header_spike_in.txt"
+         
+   // Getting the header & counting the total number of mapped reads.
+   // Extracting reads mapping on the ref_genome, creating a correct header then rehead and index the mapping file and count mapped reads
+   // Extracting reads mapping on the spike_in_genome, creating a correct header then rehead and index the mapping file and count mapped reads
+   // Calculating the NormFactor for bamCoverage
+   """
+   samtools view -H ${bamFiles[0]} > header.txt
+   NB_TOTAL_MAPPED=`samtools view -c ${bamFiles[0]}`
+
+   samtools view -bh -o tmp.bam ${bamFiles[0]} ${ref_seq_ids.join(' ')}
+   grep -vP "${'SN:'+si_seq_ids.join('\\s|SN:')}" header.txt > header_ref.txt
+   samtools reheader header_ref.txt tmp.bam > ${prefix}.split_ref.sorted.rmdup.bam && samtools index ${prefix}.split_ref.sorted.rmdup.bam && rm tmp.bam
+   NB_REF_MAPPED=`samtools view -c ${prefix}.split_ref.rmdup.sorted.bam`
+   
+   samtools view -bh -o tmp ${bamFiles[0]} ${si_seq_ids.join(' ')}
+   grep -vP "${'SN:'+ref_seq_ids.join('\\s|SN:')}" header.txt > header_spike_in.txt
+   samtools reheader header_spike_in.txt tmp.bam > ${prefix}.split_spike_in.sorted.rmdup.bam && samtools index ${prefix}.split_spike_in.sorted.rmdup.bam && rm tmp.bam
+   NB_SPIKE_IN_MAPPED=`samtools view -c ${prefix}.split_spike_in.sorted.rmdup.bam`
+
+   NORM_FACTOR=\$(echo "scale=8;(1000000/$NB_READS_TOTAL)*(${params.spike_in_fraction}/($NB_SPIKE_IN_MAPPED/$NB_READS_TOTAL))" | bc)
+   echo $NORM_FACTOR
+   """
+}
 }
 else{
    //Set the channels as the ouput of samtools process, adding 1 as scale factor
