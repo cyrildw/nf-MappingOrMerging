@@ -162,7 +162,7 @@ if(params.spike_in_norm){
       output:
       path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into ref_to_index_ch
       path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into mapping_ref_ch
-      path "${params.ref_genome_prefix}.seq_ids.txt" into (ref_genome_seq_id_ch, ref_genome_seq_id_4uniq_ch, test2_ch)
+      path "${params.ref_genome_prefix}.seq_ids.txt" into ref_seq_id_File_ch 
       path "${params.spike_in_genome_prefix}.seq_ids.txt" into (spike_in_genome_seq_id_ch, spike_in_genome_seq_id_4uniq_ch)
       
       """
@@ -170,6 +170,13 @@ if(params.spike_in_norm){
       grep ">" ${ref_genome} | sed 's/>\\([^[:blank:]]*\\)[[:blank:]]*.*/\\1/g' > ${params.ref_genome_prefix}.seq_ids.txt
       grep ">" ${spike_in_genome} | sed 's/>\\([^[:blank:]]*\\)[[:blank:]]*.*/\\1/g' > ${params.spike_in_genome_prefix}.seq_ids.txt
       """
+   }
+   process ref_seq_id_parsing {
+      label 'noContainer'
+      input:
+      path myFile from ref_seq_id_File_ch
+      output:
+      Channel.fromPath(myFile) into (ref_genome_seq_id_ch, ref_genome_seq_id_4uniq_ch, test2_ch)
    }
    test2_ch.view()
    
