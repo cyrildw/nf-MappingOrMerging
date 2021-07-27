@@ -176,7 +176,11 @@ if(params.spike_in_norm){
       input:
       path myFile from ref_seq_id_File_ch
       output:
-      Channel.fromPath(myFile) into (ref_genome_seq_id_ch, ref_genome_seq_id_4uniq_ch, test2_ch)
+      val(stdout) into (ref_genome_seq_id_ch, ref_genome_seq_id_4uniq_ch, test2_ch)
+      
+      """
+      cat ${myFile}
+      """
    }
    test2_ch.view()
    
