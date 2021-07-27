@@ -148,31 +148,31 @@ ch_Toreport_trim_nb.join(trimed_reads_ch)
 */   
 
 /*TODO : 
-- If spike-in_norm = true : make genome concatenation => channel for genome ref and value for concatenated genome prefix
+- If spike_in_norm = true : make genome concatenation => channel for genome ref and value for concatenated genome prefix
 - Create a new channel for the reference mapping_ref_ch
-   * if(!spike-in_norm){mapping_ref_ch = ${params.genome_ref} }
+   * if(!spike_in_norm){mapping_ref_ch = ${params.genome_ref} }
 */
-if(spike-in_norm){
+if(spike_in_norm){
    process hybrid_genome {
       // Concatenate the two genome (ref & si) and extract names of the seq_ids in both files.
       label 'noContainer'
       input:
       path ref_genome from params.ref_genome
-      path spike-in_genome from params.spike-in_genome
+      path spike_in_genome from params.spike_in_genome
       ouput:
-      path "${params.ref_genome_prefix}_${params.spike-in_genome_prefix}.fa" into mapping_ref_ch
+      path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into mapping_ref_ch
       path "${params.ref_genome_prefix}.seq_ids.txt" into ref_genome_seq_id_ch
-      path "${params.spike-in_genome_prefix}.seq_ids.txt" into spike-in_genome_seq_id_ch
+      path "${params.spike_in_genome_prefix}.seq_ids.txt" into spike_in_genome_seq_id_ch
       
       """
-      cat ${ref_genome} ${spike-in_genome} > ${params.ref_genome_prefix}_${params.spike-in_genome_prefix}.fa
+      cat ${ref_genome} ${spike_in_genome} > ${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa
       grep ">" ${ref_genome} | sed 's/>\([^[:blank:]]*\)[[:blank:]]*.*/\1/g' > ${params.ref_genome_prefix}.seq_ids.txt
-      grep ">" ${spike-in_genome} | sed 's/>\([^[:blank:]]*\)[[:blank:]]*.*/\1/g' > ${params.spike-in_genome_prefix}.seq_ids.txt
+      grep ">" ${spike_in_genome} | sed 's/>\([^[:blank:]]*\)[[:blank:]]*.*/\1/g' > ${params.spike_in_genome_prefix}.seq_ids.txt
       """
    }
    
 }
-else if(!spike-in_norm){
+else if(!spike_in_norm){
    //In absence of spike in the mapping_ref_ch contains the ref_genome
    mapping_ref_ch = Channel.fromPath( params.ref_genome)
 }
@@ -382,10 +382,10 @@ process samtools {
    """
 }   
 
-if(params.spike-in_norm){
+if(params.spike_in_norm){
    /* From samtools process : 
          1. Count reads on the concatenated genome
-            1.1. if nb reads mapped on the spike-in_genome < spike-in_min_read_nb : set the channels to the output of samtools process.
+            1.1. if nb reads mapped on the spike_in_genome < spike_in_min_read_nb : set the channels to the output of samtools process.
          2. Split the alignments based on the genome
          3. Get the normalization factor.
    */
@@ -393,19 +393,19 @@ if(params.spike-in_norm){
       input:
       tuple val(LibName), val(prefix), path(bamFiles) from samtooled_ch
       val(ref_seq_ids) from ref_genome_seq_id_ch.collect()
-      val(si_seq_ids) from spike-in_genome_seq_id_ch.collect()
+      val(si_seq_ids) from spike_in_genome_seq_id_ch.collect()
       output:
       tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.bam*"), val(stdout) into to_bamCov_ch
       tuple val(LibName), file("${prefix}.sorted.bam*") into to_count_mapped_reads_ch
-      path "${prefix}.split_spike-in.sorted.bam*"
+      path "${prefix}.split_spike_in.sorted.bam*"
       path "tmp.bam"
       path "header.txt"
       path "header_ref.txt"
-      path "header_spike-in.txt"
+      path "header_spike_in.txt"
             
       // Getting the header & counting the total number of mapped reads.
       // Extracting reads mapping on the ref_genome, creating a correct header then rehead and index the mapping file and count mapped reads
-      // Extracting reads mapping on the spike-in_genome, creating a correct header then rehead and index the mapping file and count mapped reads
+      // Extracting reads mapping on the spike_in_genome, creating a correct header then rehead and index the mapping file and count mapped reads
       // Calculating the NormFactor for bamCoverage
       """
       samtools view -H ${bamFiles[0]} > header.txt
@@ -417,11 +417,11 @@ if(params.spike-in_norm){
       NB_REF_MAPPED=`samtools view -c ${prefix}.split_ref.sorted.bam`
       
       samtools view -bh -o tmp ${bamFiles[0]} ${si_seq_ids.join(' ')}
-      grep -vP "${'SN:'+ref_seq_ids.join('\s|SN:')}" header.txt > header_spike-in.txt
-      samtools reheader header_spike-in.txt tmp.bam > ${prefix}.split_spike-in.sorted.bam && samtools index ${prefix}.split_spike-in.sorted.bam && rm tmp.bam
-      NB_SPIKE_IN_MAPPED=`samtools view -c ${prefix}.split_spike-in.sorted.bam`
+      grep -vP "${'SN:'+ref_seq_ids.join('\s|SN:')}" header.txt > header_spike_in.txt
+      samtools reheader header_spike_in.txt tmp.bam > ${prefix}.split_spike_in.sorted.bam && samtools index ${prefix}.split_spike_in.sorted.bam && rm tmp.bam
+      NB_SPIKE_IN_MAPPED=`samtools view -c ${prefix}.split_spike_in.sorted.bam`
 
-      NORM_FACTOR=\$(echo "scale=8;(1000000/$NB_READS_TOTAL)*(${params.spike-in_fraction}/($NB_SPIKE_IN_MAPPED/$NB_READS_TOTAL))" | bc)
+      NORM_FACTOR=\$(echo "scale=8;(1000000/$NB_READS_TOTAL)*(${params.spike_in_fraction}/($NB_SPIKE_IN_MAPPED/$NB_READS_TOTAL))" | bc)
       echo $NORM_FACTOR
       """
    }
@@ -447,7 +447,7 @@ process genome_coverage_bam {
    output:
 	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into genCoved_ch
    file("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw")
-   if(!params.spike-in_norm){
+   if(!params.spike_in_norm){
    """
    bamCoverage \
    -b ${bamFiles[0]} \
@@ -455,7 +455,7 @@ process genome_coverage_bam {
    ${params.bamcoverage_options} --binSize ${params.bin_size} -p ${task.cpus}
    """
    }
-   if(params.spike-in_norm){
+   if(params.spike_in_norm){
    """
    bamCoverage \
    -b ${bamFiles[0]} \
@@ -479,7 +479,7 @@ process genome_coverage_rmdup {
    output:
 	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into genCoved_uniq_ch
    file("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") 
-   if(!params.spike-in_norm){
+   if(!params.spike_in_norm){
    """
    bamCoverage \
    -b ${bamFiles[0]} \
@@ -487,7 +487,7 @@ process genome_coverage_rmdup {
    ${params.bamcoverage_options} --binSize ${params.bin_size} -p ${task.cpus}
    """
    }
-   if(params.spike-in_norm){
+   if(params.spike_in_norm){
    """
     bamCoverage \
    -b ${bamFiles[0]} \
