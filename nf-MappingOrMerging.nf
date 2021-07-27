@@ -138,7 +138,7 @@ ch_Toreport_trim_nb.join(trimed_reads_ch)
 #
 #     READ MAPPING : 
 # 1. if Spike in : 
-#        + from individual reference genome : get the seq_ids (grep ">" ref.fa | sed 's/>\([^[:blank:]]*\)[[:blank:]]*.*/\1/g')
+#        + from individual reference genome : get the seq_ids
 #        + Create the concatenated reference'
 # 2. Indexing the reference
 # 3. Read mapping with the choosen mapper
@@ -152,29 +152,31 @@ ch_Toreport_trim_nb.join(trimed_reads_ch)
 - Create a new channel for the reference mapping_ref_ch
    * if(!spike_in_norm){mapping_ref_ch = ${params.genome_ref} }
 */
-if(spike_in_norm){
+if(params.spike_in_norm){
    process hybrid_genome {
       // Concatenate the two genome (ref & si) and extract names of the seq_ids in both files.
       label 'noContainer'
       input:
       path ref_genome from params.ref_genome
       path spike_in_genome from params.spike_in_genome
-      ouput:
+      output:
+      path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into ref_to_index_ch
       path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into mapping_ref_ch
       path "${params.ref_genome_prefix}.seq_ids.txt" into ref_genome_seq_id_ch
       path "${params.spike_in_genome_prefix}.seq_ids.txt" into spike_in_genome_seq_id_ch
       
       """
       cat ${ref_genome} ${spike_in_genome} > ${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa
-      grep ">" ${ref_genome} | sed 's/>\([^[:blank:]]*\)[[:blank:]]*.*/\1/g' > ${params.ref_genome_prefix}.seq_ids.txt
-      grep ">" ${spike_in_genome} | sed 's/>\([^[:blank:]]*\)[[:blank:]]*.*/\1/g' > ${params.spike_in_genome_prefix}.seq_ids.txt
+      grep ">" ${ref_genome} | sed 's/>\\([^[:blank:]]*\\)[[:blank:]]*.*/\\1/g' > ${params.ref_genome_prefix}.seq_ids.txt
+      grep ">" ${spike_in_genome} | sed 's/>\\([^[:blank:]]*\\)[[:blank:]]*.*/\\1/g' > ${params.spike_in_genome_prefix}.seq_ids.txt
       """
    }
    
 }
-else if(!spike_in_norm){
+else if(!params.spike_in_norm){
    //In absence of spike in the mapping_ref_ch contains the ref_genome
    mapping_ref_ch = Channel.fromPath( params.ref_genome)
+   ref_to_index_ch = Channel.fromPath( params.ref_genome)
 }
 if(params.bowtie_mapping){
    
@@ -188,7 +190,7 @@ if(params.bowtie_mapping){
       tag "$genome.baseName"
       label "multiCpu"
       input:
-      path genome from mapping_ref_ch
+      path genome from ref_to_index_ch
          
       output:
       path 'genome.index*' into index_ch
@@ -206,7 +208,7 @@ if(params.bowtie_mapping){
       label 'multiCpu'
       input:
       tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from design_mapping_ch
-      path genome from params.genome
+      path genome from mapping_ref_ch
       file index from index_ch
 
       output:
@@ -234,7 +236,7 @@ else if(params.subread_mapping){
    process buildIndexSR {
       tag "$genome.baseName"
       input:
-      path genome from mapping_ref_ch
+      path genome from ref_to_index_ch
 
 
       output:
@@ -253,7 +255,7 @@ else if(params.subread_mapping){
       maxForks 8
       input:
       tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from design_mapping_ch
-      path genome from params.genome
+      path genome from mapping_ref_ch
       file index from index_ch
 
       output:
@@ -412,12 +414,12 @@ if(params.spike_in_norm){
       NB_TOTAL_MAPPED=`samtools view -c ${bamFiles[0]}`
 
       samtools view -bh -o tmp.bam ${bamFiles[0]} ${ref_seq_ids.join(' ')}
-      grep -vP "${'SN:'+si_seq_ids.join('\s|SN:')}" header.txt > header_ref.txt
+      grep -vP "${'SN:'+si_seq_ids.join('\\s|SN:')}" header.txt > header_ref.txt
       samtools reheader header_ref.txt tmp.bam > ${prefix}.split_ref.sorted.bam && samtools index ${prefix}.split_ref.sorted.bam && rm tmp.bam
       NB_REF_MAPPED=`samtools view -c ${prefix}.split_ref.sorted.bam`
       
       samtools view -bh -o tmp ${bamFiles[0]} ${si_seq_ids.join(' ')}
-      grep -vP "${'SN:'+ref_seq_ids.join('\s|SN:')}" header.txt > header_spike_in.txt
+      grep -vP "${'SN:'+ref_seq_ids.join('\\s|SN:')}" header.txt > header_spike_in.txt
       samtools reheader header_spike_in.txt tmp.bam > ${prefix}.split_spike_in.sorted.bam && samtools index ${prefix}.split_spike_in.sorted.bam && rm tmp.bam
       NB_SPIKE_IN_MAPPED=`samtools view -c ${prefix}.split_spike_in.sorted.bam`
 
@@ -444,25 +446,23 @@ process genome_coverage_bam {
       }
    input:
   	tuple val(LibName), val(prefix), path(bamFiles), val(scaleF) from to_bamCov_ch
-   output:
+	output:
 	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into genCoved_ch
    file("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw")
-   if(!params.spike_in_norm){
-   """
-   bamCoverage \
-   -b ${bamFiles[0]} \
-   -o ${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw -of bigwig \
-   ${params.bamcoverage_options} --binSize ${params.bin_size} -p ${task.cpus}
-   """
-   }
-   if(params.spike_in_norm){
-   """
-   bamCoverage \
-   -b ${bamFiles[0]} \
-   -o ${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw -of bigwig \
-   ${params.bamcoverage_options} --scaleFactor ${scaleF} --binSize ${params.bin_size} -p ${task.cpus}
-   """
-   }
+  	 
+	"""
+	if(! ${params.spike_in_norm} ); then
+		bamCoverage \
+	  	 -b ${bamFiles[0]} \
+	  	 -o ${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw -of bigwig \
+	  	 ${params.bamcoverage_options} --binSize ${params.bin_size} -p ${task.cpus}
+	else
+		bamCoverage \
+		-b ${bamFiles[0]} \
+		-o ${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw -of bigwig \
+		${params.bamcoverage_options} --scaleFactor ${scaleF} --binSize ${params.bin_size} -p ${task.cpus}
+	fi	
+	"""
 }
 //--effectiveGenomeSize 12157105 
 
@@ -479,22 +479,20 @@ process genome_coverage_rmdup {
    output:
 	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into genCoved_uniq_ch
    file("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") 
-   if(!params.spike_in_norm){
+
+	"""
+	if(! ${params.spike_in_norm} ); then
+	   bamCoverage \
+	   -b ${bamFiles[0]} \
+	   -o ${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw -of bigwig \
+	   ${params.bamcoverage_options} --binSize ${params.bin_size} -p ${task.cpus}
+	else
+	    bamCoverage \
+	   -b ${bamFiles[0]} \
+	   -o ${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw -of bigwig \
+	   ${params.bamcoverage_options} --scaleFactor ${scaleF}  --binSize ${params.bin_size} -p ${task.cpus}
+	fi
    """
-   bamCoverage \
-   -b ${bamFiles[0]} \
-   -o ${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw -of bigwig \
-   ${params.bamcoverage_options} --binSize ${params.bin_size} -p ${task.cpus}
-   """
-   }
-   if(params.spike_in_norm){
-   """
-    bamCoverage \
-   -b ${bamFiles[0]} \
-   -o ${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw -of bigwig \
-   ${params.bamcoverage_options} --scaleFactor ${scaleF}  --binSize ${params.bin_size} -p ${task.cpus}
-   """
-   }
 }
 
 /*
