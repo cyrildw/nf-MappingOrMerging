@@ -163,7 +163,7 @@ if(params.spike_in_norm){
       path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into ref_to_index_ch
       path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into mapping_ref_ch
       path "${params.ref_genome_prefix}.seq_ids.txt" into ref_seq_id_File_ch 
-      path "${params.spike_in_genome_prefix}.seq_ids.txt" into (spike_in_genome_seq_id_ch, spike_in_genome_seq_id_4uniq_ch)
+      path "${params.spike_in_genome_prefix}.seq_ids.txt" into spike_in_seq_id_File_ch
       
       """
       cat ${ref_genome} ${spike_in_genome} > ${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa
