@@ -176,13 +176,24 @@ if(params.spike_in_norm){
       input:
       path myFile from ref_seq_id_File_ch
       output:
-      val(stdout) into (ref_genome_seq_id_ch, ref_genome_seq_id_4uniq_ch, test2_ch)
+      stdout into (ref_genome_seq_id_ch, ref_genome_seq_id_4uniq_ch)
       
       """
       cat ${myFile}
       """
    }
-   test2_ch.view()
+   process spike_in_seq_id_parsing {
+      label 'noContainer'
+      input:
+      path myFile from spike_in_seq_id_File_ch
+      output:
+      stdout into (spike_in_genome_seq_id_ch, spike_in_genome_seq_id_4uniq_ch)
+      
+      """
+      cat ${myFile}
+      """
+   }
+
    
 }
 else if(!params.spike_in_norm){
@@ -409,7 +420,7 @@ if(params.spike_in_norm){
       val(ref_seq_ids) from ref_genome_seq_id_ch.collect()
       val(si_seq_ids) from spike_in_genome_seq_id_ch.collect()
       output:
-      tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.bam*"), val(stdout) into to_bamCov_ch
+      tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.bam*"), stdout into to_bamCov_ch
       tuple val(LibName), file("${prefix}.sorted.bam*") into to_count_mapped_reads_ch
       path "${prefix}.split_spike_in.sorted.bam*"
       path "tmp.bam"
@@ -435,8 +446,8 @@ if(params.spike_in_norm){
       samtools reheader header_spike_in.txt tmp.bam > ${prefix}.split_spike_in.sorted.bam && samtools index ${prefix}.split_spike_in.sorted.bam && rm tmp.bam
       NB_SPIKE_IN_MAPPED=`samtools view -c ${prefix}.split_spike_in.sorted.bam`
 
-      NORM_FACTOR=\$(echo "scale=8;(1000000/$NB_READS_TOTAL)*(${params.spike_in_fraction}/($NB_SPIKE_IN_MAPPED/$NB_READS_TOTAL))" | bc)
-      echo $NORM_FACTOR
+      NORM_FACTOR=\$(echo "scale=8;(1000000/\$NB_READS_TOTAL)*(${params.spike_in_fraction}/(\$NB_SPIKE_IN_MAPPED/\$NB_READS_TOTAL))" | bc)
+      echo \$NORM_FACTOR
       """
    }
    process si_mapping_uniq_split{
@@ -445,7 +456,7 @@ if(params.spike_in_norm){
    val(ref_seq_ids) from ref_genome_seq_id_4uniq_ch.collect()
    val(si_seq_ids) from spike_in_genome_seq_id_4uniq_ch.collect()
    output:
-   tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.rmdup.bam*"), val(stdout) into to_bamCov_rmdup_ch
+   tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.rmdup.bam*"), stdout into to_bamCov_rmdup_ch
    tuple val(LibName), file("${prefix}.sorted.rmdup.bam*") into to_count_uniq_mapped_reads_ch
    path "${prefix}.split_spike_in.sorted.rmdup.bam*"
    path "tmp.bam"
@@ -471,8 +482,8 @@ if(params.spike_in_norm){
    samtools reheader header_spike_in.txt tmp.bam > ${prefix}.split_spike_in.sorted.rmdup.bam && samtools index ${prefix}.split_spike_in.sorted.rmdup.bam && rm tmp.bam
    NB_SPIKE_IN_MAPPED=`samtools view -c ${prefix}.split_spike_in.sorted.rmdup.bam`
 
-   NORM_FACTOR=\$(echo "scale=8;(1000000/$NB_READS_TOTAL)*(${params.spike_in_fraction}/($NB_SPIKE_IN_MAPPED/$NB_READS_TOTAL))" | bc)
-   echo $NORM_FACTOR
+   NORM_FACTOR=\$(echo "scale=8;(1000000/\$NB_READS_TOTAL)*(${params.spike_in_fraction}/(\$NB_SPIKE_IN_MAPPED/\$NB_READS_TOTAL))" | bc)
+   echo \$NORM_FACTOR
    """
 }
 }
