@@ -9,14 +9,15 @@
    - use samtools stats ?
 3] Think about how to integrate the spike in normalization.
    - add a spike_in_genome option
-   - first map on the spike in genome
-   - map on the normal genome
-   - calculate SpikeIn normalization ratio
-4] Add more in the configuration file
-   - mapper options :
-TODO     - bowtie2 (very-sensitive etc)
-         - subread
-OK   - samtools options (-F 4 -f 3)
+   - first map on the concatenation of ref_genome and spike_in_genome
+   - extract and count reads
+   - calculate SpikeIn normalization ratio for the bamCoverage
+4] Allow single end mapping and or multiple fastq pairs (Fq1a Fq1b Fq2a Fq2b)
+   - when reading the csv file, the fq colomn is no longer a file but a list of file (, separated)
+   - adapt read counting, mapping, samtools filtering (in case of single end)
+   - reject hybrid setups with 1 paired end and 1 single end sequencing for the same sample
+   - for single end sequencing : estimate insert size for bamCoverage
+TODO - samtools options (-F 4 -f 3) to include in the merge options
 OK   - bamCoverage options (indluding bins)
 5] Think, if necessary ? how to automatically configure for CNRS vs CEA cluster, for file localization.
 
@@ -52,15 +53,21 @@ i=0;
       .splitCsv(header:true, sep:';')
       .map { row -> [ row.LibName, i++, file("$params.input_dir/$row.LibFastq1", checkIfExists: true), file("$params.input_dir/$row.LibFastq2", checkIfExists: true), "$row.LibName.${params.mapper_id}.${params.ref_genome_prefix}"+".pe" ] }
       .into { design_reads_csv; ch_Toreport_reads_nb }
-   
-   /* Reporting at multiple steps
-   - 1 nb of sequenced reads (_report_Nbseqreads)
-   - 2 nb of reads post trimming (_report_Nbtrimreads)
-   - 3 nb of mapped reads w/ filter (_report_Nbmappedreads)
-   - 4 nb of non pcr duplicate reads (_report_Nbuniqreads)
-   - 5 insert size
-   - Merge all and write in csv
-   */
+
+
+/*
+#############################################################
+#
+#     READ PROCESSING : 
+# 1. Counting reads in the fastq files
+# 2. Triming reads with Trim Galore
+# 3. Counting trimed reads.
+#
+#
+##############################################################
+*/   
+
+
    process _report_Nbseqreads {
       tag "$LibName"
       input:
@@ -126,6 +133,49 @@ ch_Toreport_trim_nb.join(trimed_reads_ch)
    }
 
 
+/*
+#############################################################
+#
+#     READ MAPPING : 
+# 1. if Spike in : 
+#        + from individual reference genome : get the seq_ids (grep ">" ref.fa | sed 's/>\([^[:blank:]]*\)[[:blank:]]*.*/\1/g')
+#        + Create the concatenated reference'
+# 2. Indexing the reference
+# 3. Read mapping with the choosen mapper
+#
+#
+##############################################################
+*/   
+
+/*TODO : 
+- If spike-in_norm = true : make genome concatenation => channel for genome ref and value for concatenated genome prefix
+- Create a new channel for the reference mapping_ref_ch
+   * if(!spike-in_norm){mapping_ref_ch = ${params.genome_ref} }
+*/
+if(spike-in_norm){
+   process hybrid_genome {
+      // Concatenate the two genome (ref & si) and extract names of the seq_ids in both files.
+      label 'noContainer'
+      input:
+      path ref_genome from params.ref_genome
+      path spike-in_genome from params.spike-in_genome
+      ouput:
+      path "${params.ref_genome_prefix}_${params.spike-in_genome_prefix}.fa" into mapping_ref_ch
+      path "${params.ref_genome_prefix}.seq_ids.txt" into ref_genome_seq_id_ch
+      path "${params.spike-in_genome_prefix}.seq_ids.txt" into spike-in_genome_seq_id_ch
+      
+      """
+      cat ${ref_genome} ${spike-in_genome} > ${params.ref_genome_prefix}_${params.spike-in_genome_prefix}.fa
+      grep ">" ${ref_genome} | sed 's/>\([^[:blank:]]*\)[[:blank:]]*.*/\1/g' > ${params.ref_genome_prefix}.seq_ids.txt
+      grep ">" ${spike-in_genome} | sed 's/>\([^[:blank:]]*\)[[:blank:]]*.*/\1/g' > ${params.spike-in_genome_prefix}.seq_ids.txt
+      """
+   }
+   
+}
+else if(!spike-in_norm){
+   //In absence of spike in the mapping_ref_ch contains the ref_genome
+   mapping_ref_ch = Channel.fromPath( params.ref_genome)
+}
 if(params.bowtie_mapping){
    
    /*
@@ -138,7 +188,7 @@ if(params.bowtie_mapping){
       tag "$genome.baseName"
       label "multiCpu"
       input:
-      path genome from params.ref_genome
+      path genome from mapping_ref_ch
          
       output:
       path 'genome.index*' into index_ch
@@ -165,7 +215,7 @@ if(params.bowtie_mapping){
 
       """
       bowtie2 \
-      --very-sensitive \
+      ${params.bowtie_options} \
       --threads ${task.cpus} \
       -x genome.index \
       -1 ${LibFastq1} \
@@ -184,7 +234,7 @@ else if(params.subread_mapping){
    process buildIndexSR {
       tag "$genome.baseName"
       input:
-      path genome from params.genome
+      path genome from mapping_ref_ch
 
 
       output:
@@ -215,12 +265,11 @@ else if(params.subread_mapping){
       // add && rm ${MappingPrefix}.tmp.bam when it's working
       """
       subread-align \
-      -t 1 \
+      -t 1 ${params.subread_options} \
       -T ${task.cpus} \
       -i genome.index \
       -r ${LibFastq1} \
       -R ${LibFastq2} \
-      --multiMapping -B 3 \
       -o ${MappingPrefix}.tmp.bam &>log && samtools view -bh ${params.samtools_flag_filter} -q ${params.samtools_q_filter} ${MappingPrefix}.tmp.bam  > ${MappingPrefix}.bam
       """
 
@@ -234,8 +283,21 @@ else if(params.subread_mapping){
 }
 
 }
+
+/*
+#############################################################
+#
+#     MAPPING FILE MERGING : 
+# 1. Importing bam files
+# 2. Use MergeSamFiles for merging
+# TODO Filtering with samtools view ?
+#
+#
+##############################################################
+*/   
+
 else {
-   i=0;
+   i=0; //Counter used to keep the  input files order
    Channel
       .fromPath(params.input_design)
       .splitCsv(header:true, sep:';')
@@ -250,7 +312,7 @@ else {
       .set {design_bam_merged}
 
    /* Merge bam from same experiment
-   *      
+   *      TODO : perform samtools view with filtering parameters
    */
 
    process mergeBamFiles {
@@ -275,6 +337,21 @@ else {
 
 
 
+/*
+#############################################################
+#
+#     MAPPING file filtering : 
+# 1. Samtools index
+# 2. if Spike in : 
+      + split the mapping file according to both genomes
+      + rehead the bam file with correct header (only reference seq_ids)
+      + count the mapped reads on each genomes
+# 2. Indexing the reference
+# 3. Read mapping with the choosen mapper
+#
+#
+##############################################################
+*/   
 /*
  * Step 4. Filters the mapping file with samtools
  TODO    add flagstat
@@ -305,8 +382,55 @@ process samtools {
    """
 }   
 
+if(params.spike-in_norm){
+   /* From samtools process : 
+         1. Count reads on the concatenated genome
+            1.1. if nb reads mapped on the spike-in_genome < spike-in_min_read_nb : set the channels to the output of samtools process.
+         2. Split the alignments based on the genome
+         3. Get the normalization factor.
+   */
+   process si_mapping_split{
+      input:
+      tuple val(LibName), val(prefix), path(bamFiles) from samtooled_ch
+      val(ref_seq_ids) from ref_genome_seq_id_ch.collect()
+      val(si_seq_ids) from spike-in_genome_seq_id_ch.collect()
+      output:
+      tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.bam*") into samtooled_ch
+      tuple val(LibName), file("${prefix}.sorted.bam*") into mapped_reads_ch
+      path "${prefix}.split_spike-in.sorted.bam*"
+      path "tmp.bam"
+      path "header.txt"
+      path "header_ref.txt"
+      path "header_spike-in.txt"
+      val stdout
 
+      
+      // Getting the header & counting the total number of mapped reads.
+      // Extracting reads mapping on the ref_genome, creating a correct header then rehead and index the mapping file and count mapped reads
+      // Extracting reads mapping on the spike-in_genome, creating a correct header then rehead and index the mapping file and count mapped reads
+      // Calculating the NormFactor for bamCoverage
+      """
+      samtools view -H ${bamFiles[0]} > header.txt
+      NB_TOTAL_MAPPED=`samtools view -c ${bamFiles[0]}`
 
+      samtools view -bh -o tmp.bam ${bamFiles[0]} ${ref_seq_ids.join(' ')}
+      grep -vP "${'SN:'+si_seq_ids.join('\s|SN:')}" header.txt > header_ref.txt
+      samtools reheader header_ref.txt tmp.bam > ${prefix}.split_ref.sorted.bam && samtools index ${prefix}.split_ref.sorted.bam && rm tmp.bam
+      NB_REF_MAPPED=`samtools view -c ${prefix}.split_ref.sorted.bam`
+      
+      samtools view -bh -o tmp ${bamFiles[0]} ${si_seq_ids.join(' ')}
+      grep -vP "${'SN:'+ref_seq_ids.join('\s|SN:')}" header.txt > header_spike-in.txt
+      samtools reheader header_spike-in.txt tmp.bam > ${prefix}.split_spike-in.sorted.bam && samtools index ${prefix}.split_spike-in.sorted.bam && rm tmp.bam
+      NB_SPIKE_IN_MAPPED=`samtools view -c ${prefix}.split_spike-in.sorted.bam`
+
+      NORM_FACTOR=\$(echo "scale=8;(1000000/$NB_READS_TOTAL)*(${params.spike-in_fraction}/($NB_SPIKE_IN_MAPPED/$NB_READS_TOTAL))" | bc)
+      echo $NORM_FACTOR
+      """
+   }
+}
+else{
+   //Set the channels as the ouput of samtools process
+}
 
 process genome_coverage_bam {
    tag "$LibName genome coverage .bam"
@@ -392,7 +516,7 @@ process _report_insert_size {
 
 ch_Toreport_all_stats
 .map{ it -> [it[1],it[0],it[2],it[3],it[4],it[5]  ] }
-.map{it -> [it.join("\t")]}.collect().set{ ch_report_all_stats} //Joining stats with ";" then use collect to have a single entry channel
+.map{it -> [it.join("\t")]}.collect().set{ ch_report_all_stats} //Joining stats with "\t" then use collect to have a single entry channel
 
 process _report_mapping_stats_csv {
    publishDir "${params.outdir}/Stats", mode: 'copy'
