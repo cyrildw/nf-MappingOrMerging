@@ -489,9 +489,9 @@ if(params.spike_in_norm){
 }
 else{
    //Set the channels as the ouput of samtools process, adding 1 as scale factor
-   samtooled_ch.map{ it -> [it[0],it[1],it[2],0 ] }.set{to_bamCov_ch}
+   samtooled_ch.map{ it -> [it[0],it[1],it[2],"0\n" ] }.set{to_bamCov_ch}
    mapped_reads_ch.set{to_count_mapped_reads_ch}
-   samtooled_rmdup_ch.map{ it -> [it[0],it[1],it[2],0 ] }.set{to_bamCov_rmdup_ch}
+   samtooled_rmdup_ch.map{ it -> [it[0],it[1],it[2],"0\n" ] }.set{to_bamCov_rmdup_ch}
    mapped_uniq_reads_ch.set{to_count_uniq_mapped_reads_ch}
 }
 
