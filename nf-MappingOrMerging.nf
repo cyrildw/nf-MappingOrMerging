@@ -446,7 +446,7 @@ if(params.spike_in_norm){
       cat header_spike_in.txt tmp.bam | samtools view -bSh - >  ${prefix}.split_spike_in.sorted.bam && samtools index ${prefix}.split_spike_in.sorted.bam && rm tmp.bam
       NB_SPIKE_IN_MAPPED=`samtools view -c ${prefix}.split_spike_in.sorted.bam`
 
-      NORM_FACTOR=`R --slave -q -e "cat(round((10e6/$NB_TOTAL_MAPPED)*(${params.spike_in_fraction}/($NB_SPIKE_IN_MAPPED/$NB_TOTAL_MAPPED)),6), '\n')"`
+      NORM_FACTOR=`R --slave -q -e "cat(round((10e6/\$NB_TOTAL_MAPPED)*(${params.spike_in_fraction}/(\$NB_SPIKE_IN_MAPPED/\$NB_TOTAL_MAPPED)),6), '\n')"`
       echo \$NORM_FACTOR
       """
    }
@@ -482,7 +482,7 @@ if(params.spike_in_norm){
    cat header_spike_in.txt tmp.bam | samtools view -bSh - > ${prefix}.split_spike_in.sorted.rmdup.bam && samtools index ${prefix}.split_spike_in.sorted.rmdup.bam && rm tmp.bam
    NB_SPIKE_IN_MAPPED=`samtools view -c ${prefix}.split_spike_in.sorted.rmdup.bam`
 
-   NORM_FACTOR=`R --slave -q -e "cat(round((10e6/$NB_TOTAL_MAPPED)*(${params.spike_in_fraction}/($NB_SPIKE_IN_MAPPED/$NB_TOTAL_MAPPED)),6), '\n')"`
+   NORM_FACTOR=`R --slave -q -e "cat(round((10e6/\$NB_TOTAL_MAPPED)*(${params.spike_in_fraction}/(\$NB_SPIKE_IN_MAPPED/\$NB_TOTAL_MAPPED)),6), '\n')"`
    echo \$NORM_FACTOR
    """
 }
