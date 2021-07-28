@@ -420,7 +420,7 @@ if(params.spike_in_norm){
       val(ref_seq_ids) from ref_genome_seq_id_ch.splitText().map{ it.replaceAll("\n", "")}.collect()
       val(si_seq_ids) from spike_in_genome_seq_id_ch.splitText().map{ it.replaceAll("\n", "")}.collect()
       output:
-      tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.bam*"), stdout into to_bamCov_ch.map{ ti->[ ti[0], ti[1], ti[2], ti[3].replaceAll("\n", "")]}
+      tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.bam*"), stdout into to_bamCov_ch
       tuple val(LibName), file("${prefix}.split_ref.sorted.bam*") into to_count_mapped_reads_ch
       path "${prefix}.split_spike_in.sorted.bam*"
       //path "tmp.bam"
@@ -456,7 +456,7 @@ if(params.spike_in_norm){
    val(ref_seq_ids) from ref_genome_seq_id_4uniq_ch.splitText().map{ it.replaceAll("\n", "")}.collect()
    val(si_seq_ids) from spike_in_genome_seq_id_4uniq_ch.splitText().map{ it.replaceAll("\n", "")}.collect()
    output:
-   tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.rmdup.bam*"), stdout into to_bamCov_rmdup_ch.map{ ti->[ ti[0], ti[1], ti[2], ti[3].replaceAll("\n", "")]}
+   tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.rmdup.bam*"), stdout into to_bamCov_rmdup_ch
    tuple val(LibName), file("${prefix}.split_ref.sorted.rmdup.bam*") into to_count_uniq_mapped_reads_ch
    path "${prefix}.split_spike_in.sorted.rmdup.bam*"
    //path "tmp.bam"
@@ -504,7 +504,7 @@ process genome_coverage_bam {
                else null
       }
    input:
-  	tuple val(LibName), val(prefix), path(bamFiles), val(scaleF) from to_bamCov_ch
+  	tuple val(LibName), val(prefix), path(bamFiles), val(scaleF) from to_bamCov_ch.map{ ti->[ ti[0], ti[1], ti[2], ti[3].replaceAll("\n", "")]}
 	output:
 	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into genCoved_ch
    file("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw")
@@ -534,7 +534,7 @@ process genome_coverage_rmdup {
                else null
       }
    input:
-  	tuple val(LibName), val(prefix), path(bamFiles), val(scaleF) from to_bamCov_rmdup_ch
+  	tuple val(LibName), val(prefix), path(bamFiles), val(scaleF) from to_bamCov_rmdup_ch.map{ ti->[ ti[0], ti[1], ti[2], ti[3].replaceAll("\n", "")]}
    output:
 	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into genCoved_uniq_ch
    file("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") 
