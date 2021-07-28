@@ -504,7 +504,7 @@ process genome_coverage_bam {
                else null
       }
    input:
-  	tuple val(LibName), val(prefix), path(bamFiles), val(scaleF) from to_bamCov_ch
+  	tuple val(LibName), val(prefix), path(bamFiles), val(scaleF) from to_bamCov_ch.map{ it->[ it[0], it[1], it[2], it[3].replaceAll("\n", "")]}
 	output:
 	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into genCoved_ch
    file("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw")
@@ -534,7 +534,7 @@ process genome_coverage_rmdup {
                else null
       }
    input:
-  	tuple val(LibName), val(prefix), path(bamFiles), val(scaleF) from to_bamCov_rmdup_ch
+  	tuple val(LibName), val(prefix), path(bamFiles), val(scaleF) from to_bamCov_rmdup_ch.map{ it->[ it[0], it[1], it[2], it[3].replaceAll("\n", "")]}
    output:
 	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into genCoved_uniq_ch
    file("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") 
