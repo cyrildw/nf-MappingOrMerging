@@ -176,7 +176,7 @@ if(params.spike_in_norm){
       input:
       path myFile from ref_seq_id_File_ch
       output:
-      stdout into (ref_genome_seq_id_ch, ref_genome_seq_id_4uniq_ch, test2_ch)
+      stdout into (ref_genome_seq_id_ch, ref_genome_seq_id_4uniq_ch)
       
       """
       cat ${myFile}
@@ -193,7 +193,7 @@ if(params.spike_in_norm){
       cat ${myFile}
       """
    }
-   test2_ch.splitText().view()
+
    
 }
 else if(!params.spike_in_norm){
@@ -417,8 +417,8 @@ if(params.spike_in_norm){
    process si_mapping_split{
       input:
       tuple val(LibName), val(prefix), path(bamFiles) from samtooled_ch
-      val(ref_seq_ids) from ref_genome_seq_id_ch.splitText().collect()
-      val(si_seq_ids) from spike_in_genome_seq_id_ch.splitText().collect()
+      val(ref_seq_ids) from ref_genome_seq_id_ch.splitText().map{ it.replaceAll("\n", "")}.collect()
+      val(si_seq_ids) from spike_in_genome_seq_id_ch.splitText().map{ it.replaceAll("\n", "")}.collect()
       output:
       tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.bam*"), stdout into to_bamCov_ch
       tuple val(LibName), file("${prefix}.sorted.bam*") into to_count_mapped_reads_ch
@@ -453,8 +453,8 @@ if(params.spike_in_norm){
    process si_mapping_uniq_split{
    input:
    tuple val(LibName), val(prefix), path(bamFiles) from samtooled_rmdup_ch
-   val(ref_seq_ids) from ref_genome_seq_id_4uniq_ch.splitText().collect()
-   val(si_seq_ids) from spike_in_genome_seq_id_4uniq_ch.splitText().collect()
+   val(ref_seq_ids) from ref_genome_seq_id_4uniq_ch.splitText().map{ it.replaceAll("\n", "")}.collect()
+   val(si_seq_ids) from spike_in_genome_seq_id_4uniq_ch.splitText().map{ it.replaceAll("\n", "")}.collect()
    output:
    tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.rmdup.bam*"), stdout into to_bamCov_rmdup_ch
    tuple val(LibName), file("${prefix}.sorted.rmdup.bam*") into to_count_uniq_mapped_reads_ch
@@ -475,7 +475,7 @@ if(params.spike_in_norm){
    samtools view -bh -o tmp.bam ${bamFiles[0]} ${ref_seq_ids.join(' ')}
    grep -vP "${'SN:'+si_seq_ids.join('\\s|SN:')}" header.txt > header_ref.txt
    samtools reheader header_ref.txt tmp.bam > ${prefix}.split_ref.sorted.rmdup.bam && samtools index ${prefix}.split_ref.sorted.rmdup.bam && rm tmp.bam
-   NB_REF_MAPPED=`samtools view -c ${prefix}.split_ref.rmdup.sorted.bam`
+   NB_REF_MAPPED=`samtools view -c ${prefix}.split_ref.sorted.rmdup.bam`
    
    samtools view -bh -o tmp ${bamFiles[0]} ${si_seq_ids.join(' ')}
    grep -vP "${'SN:'+ref_seq_ids.join('\\s|SN:')}" header.txt > header_spike_in.txt
