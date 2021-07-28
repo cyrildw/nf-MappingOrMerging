@@ -174,7 +174,7 @@ if(params.spike_in_norm){
    process ref_seq_id_parsing {
       label 'noContainer'
       input:
-      path myFile from ref_seq_id_File_ch.splitText()
+      path myFile from ref_seq_id_File_ch
       output:
       val(stdout) into (ref_genome_seq_id_ch, ref_genome_seq_id_4uniq_ch)
       
@@ -185,7 +185,7 @@ if(params.spike_in_norm){
    process spike_in_seq_id_parsing {
       label 'noContainer'
       input:
-      path myFile from spike_in_seq_id_File_ch.splitText()
+      path myFile from spike_in_seq_id_File_ch
       output:
       val(stdout) into (spike_in_genome_seq_id_ch, spike_in_genome_seq_id_4uniq_ch)
       
@@ -417,8 +417,8 @@ if(params.spike_in_norm){
    process si_mapping_split{
       input:
       tuple val(LibName), val(prefix), path(bamFiles) from samtooled_ch
-      val(ref_seq_ids) from ref_genome_seq_id_ch.collect()
-      val(si_seq_ids) from spike_in_genome_seq_id_ch.collect()
+      val(ref_seq_ids) from ref_genome_seq_id_ch.splitText().collect()
+      val(si_seq_ids) from spike_in_genome_seq_id_ch.splitText().collect()
       output:
       tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.bam*"), stdout into to_bamCov_ch
       tuple val(LibName), file("${prefix}.sorted.bam*") into to_count_mapped_reads_ch
@@ -453,8 +453,8 @@ if(params.spike_in_norm){
    process si_mapping_uniq_split{
    input:
    tuple val(LibName), val(prefix), path(bamFiles) from samtooled_rmdup_ch
-   val(ref_seq_ids) from ref_genome_seq_id_4uniq_ch.collect()
-   val(si_seq_ids) from spike_in_genome_seq_id_4uniq_ch.collect()
+   val(ref_seq_ids) from ref_genome_seq_id_4uniq_ch.splitText().collect()
+   val(si_seq_ids) from spike_in_genome_seq_id_4uniq_ch.splitText().collect()
    output:
    tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.rmdup.bam*"), stdout into to_bamCov_rmdup_ch
    tuple val(LibName), file("${prefix}.sorted.rmdup.bam*") into to_count_uniq_mapped_reads_ch
