@@ -176,7 +176,7 @@ if(params.spike_in_norm){
       input:
       path myFile from ref_seq_id_File_ch.splitText()
       output:
-      stdout into (ref_genome_seq_id_ch, ref_genome_seq_id_4uniq_ch)
+      val(stdout) into (ref_genome_seq_id_ch, ref_genome_seq_id_4uniq_ch)
       
       """
       cat ${myFile}
@@ -187,7 +187,7 @@ if(params.spike_in_norm){
       input:
       path myFile from spike_in_seq_id_File_ch.splitText()
       output:
-      stdout into (spike_in_genome_seq_id_ch, spike_in_genome_seq_id_4uniq_ch)
+      val(stdout) into (spike_in_genome_seq_id_ch, spike_in_genome_seq_id_4uniq_ch)
       
       """
       cat ${myFile}
