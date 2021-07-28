@@ -441,9 +441,9 @@ if(params.spike_in_norm){
       samtools reheader header_ref.txt tmp.bam > ${prefix}.split_ref.sorted.bam && samtools index ${prefix}.split_ref.sorted.bam && rm tmp.bam
       NB_REF_MAPPED=`samtools view -c ${prefix}.split_ref.sorted.bam`
       
-      samtools view -bh -o tmp.bam ${bamFiles[0]} ${si_seq_ids.join(' ')}
+      samtools view -o tmp.bam ${bamFiles[0]} ${si_seq_ids.join(' ')}
       grep -vP "${'SN:'+ref_seq_ids.join('\\s|SN:')}" header.txt > header_spike_in.txt
-      samtools reheader header_spike_in.txt tmp.bam > ${prefix}.split_spike_in.sorted.bam && samtools index ${prefix}.split_spike_in.sorted.bam && rm tmp.bam
+      cat header_spike_in.txt tmp.bam | samtools view -bSh - >  ${prefix}.split_spike_in.sorted.bam && samtools index ${prefix}.split_spike_in.sorted.bam && rm tmp.bam
       NB_SPIKE_IN_MAPPED=`samtools view -c ${prefix}.split_spike_in.sorted.bam`
 
       NORM_FACTOR=\$(echo "scale=8;(1000000/\$NB_READS_TOTAL)*(${params.spike_in_fraction}/(\$NB_SPIKE_IN_MAPPED/\$NB_READS_TOTAL))" | bc)
@@ -477,9 +477,9 @@ if(params.spike_in_norm){
    samtools reheader header_ref.txt tmp.bam > ${prefix}.split_ref.sorted.rmdup.bam && samtools index ${prefix}.split_ref.sorted.rmdup.bam && rm tmp.bam
    NB_REF_MAPPED=`samtools view -c ${prefix}.split_ref.sorted.rmdup.bam`
    
-   samtools view -bh -o tmp.bam ${bamFiles[0]} ${si_seq_ids.join(' ')}
+   samtools view -o tmp.bam ${bamFiles[0]} ${si_seq_ids.join(' ')}
    grep -vP "${'SN:'+ref_seq_ids.join('\\s|SN:')}" header.txt > header_spike_in.txt
-   samtools reheader header_spike_in.txt tmp.bam > ${prefix}.split_spike_in.sorted.rmdup.bam && samtools index ${prefix}.split_spike_in.sorted.rmdup.bam && rm tmp.bam
+   cat header_spike_in.txt tmp.bam | samtools view -bSh - > ${prefix}.split_spike_in.sorted.rmdup.bam && samtools index ${prefix}.split_spike_in.sorted.rmdup.bam && rm tmp.bam
    NB_SPIKE_IN_MAPPED=`samtools view -c ${prefix}.split_spike_in.sorted.rmdup.bam`
 
    NORM_FACTOR=\$(echo "scale=8;(1000000/\$NB_READS_TOTAL)*(${params.spike_in_fraction}/(\$NB_SPIKE_IN_MAPPED/\$NB_READS_TOTAL))" | bc)
