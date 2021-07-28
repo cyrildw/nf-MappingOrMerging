@@ -430,7 +430,7 @@ if(params.spike_in_norm){
             
       // Getting the header & counting the total number of mapped reads.
       // Extracting reads mapping on the ref_genome, creating a correct header then rehead and index the mapping file and count mapped reads
-      // Extracting reads mapping on the spike_in_genome, creating a correct header then rehead and index the mapping file and count mapped reads
+      // Extracting reads mapping on the spike_in_genome, creating a correct header then go through a sam file intermediate (otherwise reheading bugs) and index the mapping file and count mapped reads
       // Calculating the NormFactor for bamCoverage
       """
       samtools view -H ${bamFiles[0]} > header.txt
@@ -466,7 +466,7 @@ if(params.spike_in_norm){
          
    // Getting the header & counting the total number of mapped reads.
    // Extracting reads mapping on the ref_genome, creating a correct header then rehead and index the mapping file and count mapped reads
-   // Extracting reads mapping on the spike_in_genome, creating a correct header then rehead and index the mapping file and count mapped reads
+   // Extracting reads mapping on the spike_in_genome, creating a correct header then go through a sam file intermediate (otherwise reheading bugs) and index the mapping file and count mapped reads
    // Calculating the NormFactor for bamCoverage
    """
    samtools view -H ${bamFiles[0]} > header.txt
