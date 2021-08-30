@@ -195,7 +195,36 @@ if(params.spike_in_norm){
    }
 
    
-}
+}        
+
+
+
+                                          //
+                                       //   //
+                                    //        //
+                                 //             //
+                              //        ////      //
+                           //           ////        //
+                        //              ////          //
+                     //                 ////            //
+                  //                    ////              //
+               //                       ////                //
+            //                          ////                  //
+         //                                                     //
+      //                                ////                      //
+   //                                   ////                        //
+//                                                                    //
+/*///////////////////////////////////////////////////////////////////////
+//
+//
+//
+//             IN THE MAPPING PROCESS, USING TWO CHANNELS AS INPUT IS NOT GOOD
+//                   MERGE/JOIN/COMBINE THE REFERENCE CHANNEL WITH THE LIB CHANNEL
+//
+//
+//
+////////////////////////////////////////////////////////////////////////////////////////*/
+
 else if(!params.spike_in_norm){
    //In absence of spike in the mapping_ref_ch contains the ref_genome
    mapping_ref_ch = Channel.fromPath( params.ref_genome)
@@ -231,7 +260,7 @@ if(params.bowtie_mapping){
       label 'multiCpu'
       input:
       tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from design_mapping_ch
-      path genome from mapping_ref_ch
+      //path genome from mapping_ref_ch
       file index from index_ch
 
       output:
@@ -278,7 +307,7 @@ else if(params.subread_mapping){
       maxForks 8
       input:
       tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from design_mapping_ch
-      path genome from mapping_ref_ch
+      //path genome from mapping_ref_ch
       file index from index_ch
 
       output:
