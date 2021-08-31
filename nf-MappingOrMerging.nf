@@ -495,9 +495,9 @@ if(params.spike_in_norm){
 else{
    //Set the channels as the ouput of samtools process, adding 1 as scale factor
    ch_samtooled.map{ it -> [it[0],it[1],it[2],"0\n" ] }.set{ ch_to_bamCov }
-   ch_mapped_reads.into{ch_to_count_mapped_reads; ch_to_get_insert_size}
+   ch_mapped_reads.into{ ch_to_count_mapped_reads ; ch_insert_size}
    ch_samtooled_rmdup.map{ it -> [it[0],it[1],it[2],"0\n" ] }.set{ ch_to_bamCov_rmdup }
-   ch_mapped_uniq_reads.into{ ch_to_count_uniq_mapped_reads ; ch_to_get_insert_size_uniq }
+   ch_mapped_uniq_reads.into{ ch_to_count_uniq_mapped_reads ; ch_insert_size_uniq }
 }
 
 process genome_coverage_bam {
@@ -595,7 +595,7 @@ process _report_nb_uniq_reads {
 process _report_insert_size {
    tag "$LibName"
    input:
-   tuple val(LibName), path(bamFiles) from ch_to_get_insert_size
+   tuple val(LibName), path(bamFiles) from ch_insert_size
    output:
    tuple val(LibName), stdout into ch_Rep_InsSize
    file(table)
@@ -610,7 +610,7 @@ process _report_insert_size {
 process _report_uniq_insert_size {
    tag "$LibName"
    input:
-   tuple val(LibName), path(bamFiles) from ch_to_get_insert_size_uniq
+   tuple val(LibName), path(bamFiles) from ch_insert_size_uniq
    output:
    tuple val(LibName), stdout into ch_Rep_InsSize_Uniq
    file(table_uniq)
