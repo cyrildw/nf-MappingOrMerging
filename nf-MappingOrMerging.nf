@@ -73,7 +73,7 @@ i=0;
       input:
       tuple val(LibName), LibIdx, file(LibFastq1), file(LibFastq2), MappingPrefix from ch_Toreport_reads_nb
       output:
-      tuple val(LibName), LibIdx, stdout into ( ch_Toreport_trim_nb, test1_ch )
+      tuple val(LibName), LibIdx, stdout into ( ch_Rep_NbSeq, ch_Rep_NbSeq_Uniq )
       script:
       """
       nb_line1=`gunzip -dc ${LibFastq1} | wc -l`
@@ -100,8 +100,8 @@ i=0;
       input:
       tuple val(LibName), val(LibIdx), file(LibFastq1), file(LibFastq2), MappingPrefix from design_reads_csv
       output:
-      tuple val(LibName), file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz"), MappingPrefix into design_mapping_ch 
-      tuple val(LibName), file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz") into trimed_reads_ch //don't need the LibIdx since it's already in the ch_Toreport_trim_nb
+      tuple val(LibName), file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz"), MappingPrefix into ch_design_mapping
+      tuple val(LibName), file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz") into ch_trimed_reads //don't need the LibIdx since it's already in the ch_report_1
       script:
       """
       trim_galore ${params.trim_galore_options} \
@@ -111,15 +111,14 @@ i=0;
       """
    }
 
-ch_Toreport_trim_nb.join(trimed_reads_ch)
-   .set{ch_report_trim_nb}
 
-   process _report_Nbtrimreads {
+
+   process _report_Nbtrimed {
       tag "$LibName"
       input:
-      tuple val(LibName), val(LibIdx),  NbSeqReads, file(LibFastq1), file(LibFastq2) from ch_report_trim_nb
+      tuple val(LibName), file(LibFastq1), file(LibFastq2) from ch_trimed_reads
       output:
-      tuple val(LibName), val(LibIdx),  NbSeqReads, stdout into (ch_Toreport_mapped_nb, ch_Toreport_uniq_nb)
+      tuple val(LibName), stdout into (ch_Rep_Trimed, ch_Rep_Trimed_Uniq)
 
       script:
       """
@@ -149,8 +148,8 @@ ch_Toreport_trim_nb.join(trimed_reads_ch)
 
 /*TODO : 
 - If spike_in_norm = true : make genome concatenation => channel for genome ref and value for concatenated genome prefix
-- Create a new channel for the reference mapping_ref_ch
-   * if(!spike_in_norm){mapping_ref_ch = ${params.genome_ref} }
+- Create a new channel for the reference ch_mapping_ref
+   * if(!spike_in_norm){ch_mapping_ref = ${params.genome_ref} }
 */
 if(params.spike_in_norm){
    process hybrid_genome {
@@ -160,10 +159,10 @@ if(params.spike_in_norm){
       path ref_genome from params.ref_genome
       path spike_in_genome from params.spike_in_genome
       output:
-      path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into ref_to_index_ch
-      path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into mapping_ref_ch
-      path "${params.ref_genome_prefix}.seq_ids.txt" into ref_seq_id_File_ch 
-      path "${params.spike_in_genome_prefix}.seq_ids.txt" into spike_in_seq_id_File_ch
+      path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into ch_ref_to_index
+      path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into ch_mapping_ref
+      path "${params.ref_genome_prefix}.seq_ids.txt" into ch_ref_seq_id_File
+      path "${params.spike_in_genome_prefix}.seq_ids.txt" into ch_spike_in_seq_id_File
       
       """
       cat ${ref_genome} ${spike_in_genome} > ${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa
@@ -174,9 +173,9 @@ if(params.spike_in_norm){
    process ref_seq_id_parsing {
       label 'noContainer'
       input:
-      path myFile from ref_seq_id_File_ch
+      path myFile from ch_ref_seq_id_File
       output:
-      stdout into (ref_genome_seq_id_ch, ref_genome_seq_id_4uniq_ch)
+      stdout into (ch_ref_genome_seq_id, ch_ref_genome_seq_id_4uniq)
       
       """
       cat ${myFile}
@@ -185,9 +184,9 @@ if(params.spike_in_norm){
    process spike_in_seq_id_parsing {
       label 'noContainer'
       input:
-      path myFile from spike_in_seq_id_File_ch
+      path myFile from ch_spike_in_seq_id_File
       output:
-      stdout into (spike_in_genome_seq_id_ch, spike_in_genome_seq_id_4uniq_ch)
+      stdout into (ch_spike_in_genome_seq_id, ch_spike_in_genome_seq_id_4uniq)
       
       """
       cat ${myFile}
@@ -199,9 +198,9 @@ if(params.spike_in_norm){
 
 
 else if(!params.spike_in_norm){
-   //In absence of spike in the mapping_ref_ch contains the ref_genome
-   mapping_ref_ch = Channel.fromPath( params.ref_genome)
-   ref_to_index_ch = Channel.fromPath( params.ref_genome)
+   //In absence of spike in the ch_mapping_ref contains the ref_genome
+   ch_mapping_ref = Channel.fromPath( params.ref_genome)
+   ch_ref_to_index = Channel.fromPath( params.ref_genome)
 }
 if(params.bowtie_mapping){
    
@@ -215,10 +214,10 @@ if(params.bowtie_mapping){
       tag "$genome.baseName"
       label "multiCpu"
       input:
-      path genome from ref_to_index_ch
+      path genome from ch_ref_to_index
          
       output:
-      path 'genome.index*' into index_ch
+      path 'genome.index*' into ch_index
          
       """
       bowtie2-build --threads ${task.cpus} ${genome} genome.index
@@ -232,13 +231,13 @@ if(params.bowtie_mapping){
       tag "$LibName"
       label 'multiCpu'
       input:
-      tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from design_mapping_ch
-      //path genome from mapping_ref_ch
-      file index from index_ch
+      tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from ch_design_mapping
+      //path genome from ch_mapping_ref
+      file index from ch_index
 
       output:
-      tuple val(LibName),  val(MappingPrefix), file("${MappingPrefix}.bam") into mapping_ch
-      val LibName into libName_ch
+      tuple val(LibName),  val(MappingPrefix), file("${MappingPrefix}.bam") into ch_mapping
+      val LibName into ch_libName
 
       """
       bowtie2 \
@@ -261,11 +260,11 @@ else if(params.subread_mapping){
    process buildIndexSR {
       tag "$genome.baseName"
       input:
-      path genome from ref_to_index_ch
+      path genome from ch_ref_to_index
 
 
       output:
-      path 'genome.index*' into index_ch
+      path 'genome.index*' into ch_index
       file("log")
       """
       subread-buildindex -o genome.index ${genome} 2>log 1>>log
@@ -279,13 +278,13 @@ else if(params.subread_mapping){
       label 'multiCpu_short'
       maxForks 8
       input:
-      tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from design_mapping_ch
-      //path genome from mapping_ref_ch
-      file index from index_ch
+      tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from ch_design_mapping
+      //path genome from ch_mapping_ref
+      file index from ch_index
 
       output:
-      tuple val(LibName), val(MappingPrefix), file("${MappingPrefix}.bam") into mapping_ch
-      val LibName into libName_ch
+      tuple val(LibName), val(MappingPrefix), file("${MappingPrefix}.bam") into ch_mapping
+      val LibName into ch_libName
       file("log")
       file("${MappingPrefix}.tmp.bam*")
       // --sv is raising some issues with L15_28_F_UNG1D_B150 for example. 
@@ -308,6 +307,8 @@ else if(params.subread_mapping){
 
    }
 }
+//else if(params.hisat_mapping){
+//}
 
 }
 
@@ -349,8 +350,8 @@ else {
       input:
       tuple val(LibExp), val(LibIdx), path(bams) from design_bam_merged
       output:
-      tuple val(LibExp), val(MappingPrefix), file("${MappingPrefix}.bam") into mapping_ch
-      tuple val(LibExp), val(LibIdx), val("NA") , val("NA") into (ch_Toreport_mapped_nb, ch_Toreport_uniq_nb) // creating the report channels with unavailable data for nbseq & nb_trim
+      tuple val(LibExp), val(MappingPrefix), file("${MappingPrefix}.bam") into ch_mapping
+      tuple val(LibExp), val(LibIdx), val("NA") , val("NA") into (ch_Toreport_mapped_nb, ch_Toreport_uniq_nb, ch_report_2_raw, ch_report_2_uniq) // creating the report channels with unavailable data for nbseq & nb_trim
       script:
       MappingPrefix="${LibExp}.${params.mapper_id}.${params.ref_genome_prefix}.pe.merged"
       bam_files=bams
@@ -390,13 +391,13 @@ process samtools {
    publishDir "${params.outdir}/Mapping", mode: 'copy' //params.publish_dir_mode,
 
    input:
-   tuple val(LibName),  val(prefix),  file(RawMapping) from mapping_ch
+   tuple val(LibName),  val(prefix),  file(RawMapping) from ch_mapping
    output:
    file("${prefix}.*.bam*") 
-   tuple val(LibName), val(prefix), file("${prefix}.sorted.bam*") into samtooled_ch
-   tuple val(LibName), file("${prefix}.sorted.bam*") into mapped_reads_ch
-   tuple val(LibName), val(prefix),  file("${prefix}.sorted.rmdup.bam*") into samtooled_rmdup_ch
-   tuple val(LibName), file("${prefix}.sorted.rmdup.bam*") into mapped_uniq_reads_ch
+   tuple val(LibName), val(prefix), file("${prefix}.sorted.bam*") into ch_samtooled
+   tuple val(LibName), file("${prefix}.sorted.bam*") into ch_mapped_reads
+   tuple val(LibName), val(prefix),  file("${prefix}.sorted.rmdup.bam*") into ch_samtooled_rmdup
+   tuple val(LibName), file("${prefix}.sorted.rmdup.bam*") into ch_mapped_uniq_reads
 
 	//samtools view -bSh -F 4 -f 3 -q ${params.samtools_q_filter} ${prefix}.raw.sam > ${prefix}.bam
    script:
@@ -419,12 +420,12 @@ if(params.spike_in_norm){
    process si_mapping_split{
       tag "$LibName"
       input:
-      tuple val(LibName), val(prefix), path(bamFiles) from samtooled_ch
-      val(ref_seq_ids) from ref_genome_seq_id_ch.splitText().map{ it.replaceAll("\n", "")}.collect()
-      val(si_seq_ids) from spike_in_genome_seq_id_ch.splitText().map{ it.replaceAll("\n", "")}.collect()
+      tuple val(LibName), val(prefix), path(bamFiles) from ch_samtooled
+      val(ref_seq_ids) from ch_ref_genome_seq_id.splitText().map{ it.replaceAll("\n", "")}.collect()
+      val(si_seq_ids) from ch_spike_in_genome_seq_id.splitText().map{ it.replaceAll("\n", "")}.collect()
       output:
-      tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.bam*"), stdout into to_bamCov_ch
-      tuple val(LibName), file("${prefix}.split_ref.sorted.bam*") into to_count_mapped_reads_ch
+      tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.bam*"), stdout into ch_to_bamCov
+      tuple val(LibName), file("${prefix}.split_ref.sorted.bam*") into ch_to_count_mapped_reads
       path "${prefix}.split_spike_in.sorted.bam*"
       //path "tmp.bam"
       path "header.txt"
@@ -456,12 +457,12 @@ if(params.spike_in_norm){
    process si_mapping_uniq_split{
       tag "$LibName"
       input:
-      tuple val(LibName), val(prefix), path(bamFiles) from samtooled_rmdup_ch
-      val(ref_seq_ids) from ref_genome_seq_id_4uniq_ch.splitText().map{ it.replaceAll("\n", "")}.collect()
-      val(si_seq_ids) from spike_in_genome_seq_id_4uniq_ch.splitText().map{ it.replaceAll("\n", "")}.collect()
+      tuple val(LibName), val(prefix), path(bamFiles) from ch_samtooled_rmdup
+      val(ref_seq_ids) from ch_ref_genome_seq_id_4uniq.splitText().map{ it.replaceAll("\n", "")}.collect()
+      val(si_seq_ids) from ch_spike_in_genome_seq_id_4uniq.splitText().map{ it.replaceAll("\n", "")}.collect()
       output:
-      tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.rmdup.bam*"), stdout into to_bamCov_rmdup_ch
-      tuple val(LibName), file("${prefix}.split_ref.sorted.rmdup.bam*") into to_count_uniq_mapped_reads_ch
+      tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.rmdup.bam*"), stdout into ch_to_bamCov_rmdup
+      tuple val(LibName), file("${prefix}.split_ref.sorted.rmdup.bam*") into ch_to_count_uniq_mapped_reads
       path "${prefix}.split_spike_in.sorted.rmdup.bam*"
       //path "tmp.bam"
       path "header.txt"
@@ -493,10 +494,10 @@ if(params.spike_in_norm){
 }
 else{
    //Set the channels as the ouput of samtools process, adding 1 as scale factor
-   samtooled_ch.map{ it -> [it[0],it[1],it[2],"0\n" ] }.set{to_bamCov_ch}
-   mapped_reads_ch.set{to_count_mapped_reads_ch}
-   samtooled_rmdup_ch.map{ it -> [it[0],it[1],it[2],"0\n" ] }.set{to_bamCov_rmdup_ch}
-   mapped_uniq_reads_ch.set{to_count_uniq_mapped_reads_ch}
+   ch_samtooled.map{ it -> [it[0],it[1],it[2],"0\n" ] }.set{ ch_to_bamCov }
+   ch_mapped_reads.into{ch_to_count_mapped_reads; ch_to_get_insert_size}
+   ch_samtooled_rmdup.map{ it -> [it[0],it[1],it[2],"0\n" ] }.set{ ch_to_bamCov_rmdup }
+   ch_mapped_uniq_reads.into{ ch_to_count_uniq_mapped_reads ; ch_to_get_insert_size_uniq }
 }
 
 process genome_coverage_bam {
@@ -508,9 +509,9 @@ process genome_coverage_bam {
                else null
       }
    input:
-  	tuple val(LibName), val(prefix), path(bamFiles), val(scaleF) from to_bamCov_ch.map{ ti->[ ti[0], ti[1], ti[2], ti[3].replaceAll("\n", "")]}
+  	tuple val(LibName), val(prefix), path(bamFiles), val(scaleF) from ch_to_bamCov.map{ ti->[ ti[0], ti[1], ti[2], ti[3].replaceAll("\n", "")]}
 	output:
-	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into genCoved_ch
+	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw") into ch_genCoved
    file("${prefix}.bin${params.bin_size}.RPM.bamCoverage.bw")
   	 
 	"""
@@ -538,9 +539,9 @@ process genome_coverage_rmdup {
                else null
       }
    input:
-  	tuple val(LibName), val(prefix), path(bamFiles), val(scaleF) from to_bamCov_rmdup_ch.map{ ti->[ ti[0], ti[1], ti[2], ti[3].replaceAll("\n", "")]}
+  	tuple val(LibName), val(prefix), path(bamFiles), val(scaleF) from ch_to_bamCov_rmdup.map{ ti->[ ti[0], ti[1], ti[2], ti[3].replaceAll("\n", "")]}
    output:
-	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into genCoved_uniq_ch
+	tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into ch_genCoved_uniq
    file("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") 
 
 	"""
@@ -563,18 +564,27 @@ process genome_coverage_rmdup {
  *    Parallelized with two different processes
  *       - for .bam           -for .rmdup.bam
  */
-ch_Toreport_mapped_nb
-   .join(to_count_mapped_reads_ch)
-   .set{ch_report_mapped_nb}
-   
+
 
 process _report_nb_mapped_reads {
 	tag "$LibName "
 	input:
-	tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), path(bamFiles) from ch_report_mapped_nb
+	tuple val(LibName),  path(bamFiles) from ch_to_count_mapped_reads
 	output:
-	tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), stdout, path(bamFiles) into ch_Toreport_insert_size
+	tuple val(LibName),  stdout into ch_Rep_RefMapped
 
+	script:
+	"""
+	mapped_reads=`samtools view -c ${bamFiles[0]}`
+	echo -n \$mapped_reads
+	"""
+}
+process _report_nb_uniq_reads {
+	tag "$LibName rmdup.bam"
+	input:
+	tuple val(LibName), path(bamFiles) from ch_to_count_uniq_mapped_reads
+	output:
+	tuple val(LibName), stdout into ch_Rep_RefMapped_Uniq
 	script:
 	"""
 	mapped_reads=`samtools view -c ${bamFiles[0]}`
@@ -585,9 +595,9 @@ process _report_nb_mapped_reads {
 process _report_insert_size {
    tag "$LibName"
    input:
-   tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_insert_size
+   tuple val(LibName), path(bamFiles) from ch_to_get_insert_size
    output:
-   tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into (ch_Toreport_all_stats, ch_ToAoC)
+   tuple val(LibName), stdout into ch_Rep_InsSize
    file(table)
    script:
    """
@@ -597,9 +607,39 @@ process _report_insert_size {
    """
 }
 
-ch_Toreport_all_stats
-.map{ it -> [it[1],it[0],it[2],it[3],it[4],it[5]  ] }
-.map{it -> [it.join("\t")]}.collect().set{ ch_report_all_stats} //Joining stats with "\t" then use collect to have a single entry channel
+process _report_uniq_insert_size {
+   tag "$LibName"
+   input:
+   tuple val(LibName), path(bamFiles) from ch_to_get_insert_size_uniq
+   output:
+   tuple val(LibName), stdout into ch_Rep_InsSize_Uniq
+   file(table_uniq)
+   script:
+   """
+   bamPEFragmentSize --bamfiles ${bamFiles[0]} --table table_uniq >/dev/null 2>&1
+   ins_size_uniq=`tail -1 table_uniq | awk '{ print \$6}'`
+   echo -n \$ins_size_uniq
+   """
+}
+
+// Creating ch_report_all_stats
+ch_Rep_NbSeq //Contains LibName, LibIdx, NbSeq
+.join(ch_Rep_Trimed)
+.join(ch_Rep_RefMapped)
+.join(ch_Rep_InsSize)
+.map{ it -> [it[1],it[0],it[2],it[3],it[4],it[5]  ] } // Reordering so that libIdx is first
+.map{it -> [it.join("\t")]}.collect() //Joining stats with "\t" then use collect to have a single entry channel
+.set{ ch_report_all_stats}
+
+// Creating ch_report_all_stats_uniq
+ch_Rep_NbSeq_Uniq //Contains LibName, LibIdx, NbSeq
+.join(ch_Rep_Trimed_Uniq)
+.join(ch_Rep_RefMapped_Uniq)
+.join(ch_Rep_InsSize_Uniq)
+.map{ it -> [it[1],it[0],it[2],it[3],it[4],it[5]  ] } // Reordering so that libIdx is first
+.map{it -> [it.join("\t")]}.collect() //Joining stats with "\t" then use collect to have a single entry channel
+.set{ ch_report_all_stats_uniq}
+
 
 process _report_mapping_stats_csv {
    publishDir "${params.outdir}/Stats", mode: 'copy'
@@ -615,47 +655,10 @@ process _report_mapping_stats_csv {
    """
 }
 
-
-
-ch_Toreport_uniq_nb
-   .join(to_count_uniq_mapped_reads_ch)
-   .set{ch_report_uniq_nb}
-
-process _report_nb_uniq_reads {
-	tag "$LibName rmdup.bam"
-	input:
-	tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), path(bamFiles) from ch_report_uniq_nb
-	output:
-	tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), stdout, path(bamFiles) into ch_Toreport_uniq_insert_size
-	script:
-	"""
-	mapped_reads=`samtools view -c ${bamFiles[0]}`
-	echo -n \$mapped_reads
-	"""
-}
-process _report_uniq_insert_size {
-   tag "$LibName"
-   input:
-   tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), path(bamFiles) from ch_Toreport_uniq_insert_size
-   output:
-   tuple val(LibName), val(LibIdx),  val(NbSeqReads), val(NbTrimReads), val(NbMapReads), stdout into (ch_Toreport_uniq_stats, ch_ToAoC_uniq)
-   file(table_uniq)
-   script:
-   """
-   bamPEFragmentSize --bamfiles ${bamFiles[0]} --table table_uniq >/dev/null 2>&1
-   ins_size_uniq=`tail -1 table_uniq | awk '{ print \$6}'`
-   echo -n \$ins_size_uniq
-   """
-}
-
-ch_Toreport_uniq_stats
-.map{ it -> [it[1],it[0],it[2],it[3],it[4],it[5]  ] }
-.map{it -> [it.join("\t")]}.collect().set{ ch_report_uniq_stats} //Joining stats with ";" then use collect to have a single entry channel
-
 process _report_mapping_uniq_stats_csv {
    publishDir "${params.outdir}/Stats", mode: 'copy'
    input:
-   val x from ch_report_uniq_stats
+   val x from ch_report_all_stats_uniq
    output:
    path("mapping_uniq_stats.txt")
    // echoing all the channel with join('\n') into the mapping_stats.txt file
@@ -670,18 +673,28 @@ process _report_mapping_uniq_stats_csv {
    PRODUCING csv files that serves as input design for nf-AnalysesOnCoordinates.nf
       This should be updated in aggreement with the subsequent pipeline.
 */
-
-genCoved_ch.join(ch_ToAoC)
+ch_genCoved
+.join(ch_Rep_NbSeq)
+.join(ch_Rep_Trimed)
+.join(ch_Rep_RefMapped)
+.join(ch_Rep_InsSize)
 .map{ it -> [it[4], it[0], it[2][0], it[3], it[5], it[7], 'NA', it[8],  1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join("\t")]}
 .collect()
 .set {ch_report_Aoc}
- 
-genCoved_uniq_ch.join(ch_ToAoC_uniq)
+
+
+ch_genCoved_uniq
+.join(ch_Rep_NbSeq_Uniq)
+.join(ch_Rep_Trimed_Uniq)
+.join(ch_Rep_RefMapped_Uniq)
+.join(ch_Rep_InsSize_Uniq)
 .map{ it -> [it[4], it[0], it[2][0], it[3], it[5], it[7], it[7], it[8], 1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join("\t")]}
 .collect()
 .set {ch_report_Aoc_uniq}
+
+
 
 
 process _report_AoC_csv {
