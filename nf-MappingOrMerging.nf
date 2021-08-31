@@ -627,6 +627,9 @@ ch_Rep_NbSeq //Contains LibName, LibIdx, NbSeq
 .join(ch_Rep_Trimed)
 .join(ch_Rep_RefMapped)
 .join(ch_Rep_InsSize)
+.set{ ch_raw_stats, ch_raw_stats_2}
+
+ch_raw_stats
 .map{ it -> [it[1],it[0],it[2],it[3],it[4],it[5]  ] } // Reordering so that libIdx is first
 .map{it -> [it.join("\t")]}.collect() //Joining stats with "\t" then use collect to have a single entry channel
 .set{ ch_report_all_stats}
@@ -636,6 +639,9 @@ ch_Rep_NbSeq_Uniq //Contains LibName, LibIdx, NbSeq
 .join(ch_Rep_Trimed_Uniq)
 .join(ch_Rep_RefMapped_Uniq)
 .join(ch_Rep_InsSize_Uniq)
+.set{ ch_uniq_stats, ch_uniq_stats_2}
+
+ch_uniq_stats
 .map{ it -> [it[1],it[0],it[2],it[3],it[4],it[5]  ] } // Reordering so that libIdx is first
 .map{it -> [it.join("\t")]}.collect() //Joining stats with "\t" then use collect to have a single entry channel
 .set{ ch_report_all_stats_uniq}
@@ -674,10 +680,7 @@ process _report_mapping_uniq_stats_csv {
       This should be updated in aggreement with the subsequent pipeline.
 */
 ch_genCoved
-.join(ch_Rep_NbSeq)
-.join(ch_Rep_Trimed)
-.join(ch_Rep_RefMapped)
-.join(ch_Rep_InsSize)
+.join(ch_raw_stats_2)
 .map{ it -> [it[4], it[0], it[2][0], it[3], it[5], it[7], 'NA', it[8],  1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join("\t")]}
 .collect()
@@ -685,10 +688,7 @@ ch_genCoved
 
 
 ch_genCoved_uniq
-.join(ch_Rep_NbSeq_Uniq)
-.join(ch_Rep_Trimed_Uniq)
-.join(ch_Rep_RefMapped_Uniq)
-.join(ch_Rep_InsSize_Uniq)
+.join(ch_uniq_stats_2)
 .map{ it -> [it[4], it[0], it[2][0], it[3], it[5], it[7], it[7], it[8], 1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join("\t")]}
 .collect()
