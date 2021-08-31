@@ -627,7 +627,7 @@ ch_Rep_NbSeq //Contains LibName, LibIdx, NbSeq
 .join(ch_Rep_Trimed)
 .join(ch_Rep_RefMapped)
 .join(ch_Rep_InsSize)
-.set{ ch_raw_stats, ch_raw_stats_2}
+.into{ ch_raw_stats; ch_raw_stats_2}
 
 ch_raw_stats
 .map{ it -> [it[1],it[0],it[2],it[3],it[4],it[5]  ] } // Reordering so that libIdx is first
@@ -639,7 +639,7 @@ ch_Rep_NbSeq_Uniq //Contains LibName, LibIdx, NbSeq
 .join(ch_Rep_Trimed_Uniq)
 .join(ch_Rep_RefMapped_Uniq)
 .join(ch_Rep_InsSize_Uniq)
-.set{ ch_uniq_stats, ch_uniq_stats_2}
+.into{ ch_uniq_stats; ch_uniq_stats_2}
 
 ch_uniq_stats
 .map{ it -> [it[1],it[0],it[2],it[3],it[4],it[5]  ] } // Reordering so that libIdx is first
