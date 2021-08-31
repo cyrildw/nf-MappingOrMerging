@@ -198,33 +198,6 @@ if(params.spike_in_norm){
 }        
 
 
-
-                                          //
-                                       //   //
-                                    //        //
-                                 //             //
-                              //        ////      //
-                           //           ////        //
-                        //              ////          //
-                     //                 ////            //
-                  //                    ////              //
-               //                       ////                //
-            //                          ////                  //
-         //                                                     //
-      //                                ////                      //
-   //                                   ////                        //
-//                                                                    //
-/*///////////////////////////////////////////////////////////////////////
-//
-//
-//
-//             IN THE MAPPING PROCESS, USING TWO CHANNELS AS INPUT IS NOT GOOD
-//                   MERGE/JOIN/COMBINE THE REFERENCE CHANNEL WITH THE LIB CHANNEL
-//
-//
-//
-////////////////////////////////////////////////////////////////////////////////////////*/
-
 else if(!params.spike_in_norm){
    //In absence of spike in the mapping_ref_ch contains the ref_genome
    mapping_ref_ch = Channel.fromPath( params.ref_genome)
@@ -444,7 +417,6 @@ if(params.spike_in_norm){
          3. Get the normalization factor.
    */
    process si_mapping_split{
-      echo true
       tag "$LibName"
       input:
       tuple val(LibName), val(prefix), path(bamFiles) from samtooled_ch
@@ -482,7 +454,6 @@ if(params.spike_in_norm){
       """
    }
    process si_mapping_uniq_split{
-      echo true
       tag "$LibName"
       input:
       tuple val(LibName), val(prefix), path(bamFiles) from samtooled_rmdup_ch
