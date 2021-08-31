@@ -425,7 +425,7 @@ if(params.spike_in_norm){
       val(si_seq_ids) from ch_spike_in_genome_seq_id.splitText().map{ it.replaceAll("\n", "")}.collect()
       output:
       tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.bam*"), stdout into ch_to_bamCov
-      tuple val(LibName), file("${prefix}.split_ref.sorted.bam*") into ch_to_count_mapped_reads
+      tuple val(LibName), file("${prefix}.split_ref.sorted.bam*") into (ch_to_count_mapped_reads, ch_insert_size)
       path "${prefix}.split_spike_in.sorted.bam*"
       //path "tmp.bam"
       path "header.txt"
@@ -462,7 +462,7 @@ if(params.spike_in_norm){
       val(si_seq_ids) from ch_spike_in_genome_seq_id_4uniq.splitText().map{ it.replaceAll("\n", "")}.collect()
       output:
       tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.rmdup.bam*"), stdout into ch_to_bamCov_rmdup
-      tuple val(LibName), file("${prefix}.split_ref.sorted.rmdup.bam*") into ch_to_count_uniq_mapped_reads
+      tuple val(LibName), file("${prefix}.split_ref.sorted.rmdup.bam*") into (ch_to_count_uniq_mapped_reads, ch_insert_size_uniq)
       path "${prefix}.split_spike_in.sorted.rmdup.bam*"
       //path "tmp.bam"
       path "header.txt"
