@@ -426,7 +426,7 @@ if(params.spike_in_norm){
       output:
       tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.bam*"), stdout into ch_to_bamCov
       tuple val(LibName), file("${prefix}.split_ref.sorted.bam*") into (ch_to_count_mapped_reads, ch_insert_size)
-      path "${prefix}.split_spike_in.sorted.bam*"
+      tuple val(LibName), file("${prefix}.split_spike_in.sorted.bam*") into ch_to_count_SI_mapped_reads
       //path "tmp.bam"
       path "header.txt"
       path "header_ref.txt"
@@ -463,7 +463,8 @@ if(params.spike_in_norm){
       output:
       tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.rmdup.bam*"), stdout into ch_to_bamCov_rmdup
       tuple val(LibName), file("${prefix}.split_ref.sorted.rmdup.bam*") into (ch_to_count_uniq_mapped_reads, ch_insert_size_uniq)
-      path "${prefix}.split_spike_in.sorted.rmdup.bam*"
+      tuple val(LibName), file("${prefix}.split_spike_in.sorted.rmdup.bam*") into ch_to_count_SI_uniq_mapped_reads
+
       //path "tmp.bam"
       path "header.txt"
       path "header_ref.txt"
@@ -491,13 +492,14 @@ if(params.spike_in_norm){
       echo \$NORM_FACTOR
       """
    }
+
 }
 else{
    //Set the channels as the ouput of samtools process, adding 1 as scale factor
    ch_samtooled.map{ it -> [it[0],it[1],it[2],"0\n" ] }.set{ ch_to_bamCov }
-   ch_mapped_reads.into{ ch_to_count_mapped_reads ; ch_insert_size}
+   ch_mapped_reads.into{ ch_to_count_mapped_reads; ch_to_count_SI_mapped_reads ; ch_insert_size}
    ch_samtooled_rmdup.map{ it -> [it[0],it[1],it[2],"0\n" ] }.set{ ch_to_bamCov_rmdup }
-   ch_mapped_uniq_reads.into{ ch_to_count_uniq_mapped_reads ; ch_insert_size_uniq }
+   ch_mapped_uniq_reads.into{ ch_to_count_uniq_mapped_reads; ch_to_count_SI_uniq_mapped_reads ; ch_insert_size_uniq }
 }
 
 process genome_coverage_bam {
@@ -592,6 +594,41 @@ process _report_nb_uniq_reads {
 	"""
 }
 
+process _report_SI_mapped_reads {
+   tag "$LibName "
+   input:
+   tuple val(LibName),  path(bamFiles) from ch_to_count_SI_mapped_reads
+   output:
+   tuple val(LibName),  stdout into ch_Rep_SIMapped
+
+   script:
+    """
+   if(! ${params.spike_in_norm} ); then
+      echo -n "NA"
+   else
+      mapped_reads=`samtools view -c ${bamFiles[0]}`
+      echo -n \$mapped_reads
+   fi
+   """
+}
+process _report_SI_uniq_reads {
+   tag "$LibName rmdup.bam"
+   input:
+   tuple val(LibName), path(bamFiles) from ch_to_count_SI_uniq_mapped_reads
+   output:
+   tuple val(LibName), stdout into ch_Rep_SIMapped_Uniq
+   script:
+   """
+   if(! ${params.spike_in_norm} ); then
+      echo -n "NA"
+   else
+      mapped_reads=`samtools view -c ${bamFiles[0]}`
+      echo -n \$mapped_reads
+   fi
+   """
+}
+
+
 process _report_insert_size {
    tag "$LibName"
    input:
@@ -626,11 +663,12 @@ process _report_uniq_insert_size {
 ch_Rep_NbSeq //Contains LibName, LibIdx, NbSeq
 .join(ch_Rep_Trimed)
 .join(ch_Rep_RefMapped)
+.join(ch_Rep_SIMapped)
 .join(ch_Rep_InsSize)
 .into{ ch_raw_stats; ch_raw_stats_2}
 
 ch_raw_stats
-.map{ it -> [it[1],it[0],it[2],it[3],it[4],it[5]  ] } // Reordering so that libIdx is first
+.map{ it -> [it[1],it[0],it[2],it[3],it[4],it[5],it[6]  ] } // Reordering so that libIdx is first
 .map{it -> [it.join("\t")]}.collect() //Joining stats with "\t" then use collect to have a single entry channel
 .set{ ch_report_all_stats}
 
@@ -638,11 +676,12 @@ ch_raw_stats
 ch_Rep_NbSeq_Uniq //Contains LibName, LibIdx, NbSeq
 .join(ch_Rep_Trimed_Uniq)
 .join(ch_Rep_RefMapped_Uniq)
+.join(ch_Rep_SIMapped_Uniq)
 .join(ch_Rep_InsSize_Uniq)
 .into{ ch_uniq_stats; ch_uniq_stats_2}
 
 ch_uniq_stats
-.map{ it -> [it[1],it[0],it[2],it[3],it[4],it[5]  ] } // Reordering so that libIdx is first
+.map{ it -> [it[1],it[0],it[2],it[3],it[4],it[5], it[6]  ] } // Reordering so that libIdx is first : idx, name, nbSeq, nbTrimed, nbMapped, nbSImapped, InsertSize
 .map{it -> [it.join("\t")]}.collect() //Joining stats with "\t" then use collect to have a single entry channel
 .set{ ch_report_all_stats_uniq}
 
@@ -656,7 +695,7 @@ process _report_mapping_stats_csv {
    // echoing all the channel with join('\n') into the mapping_stats.txt file
    script:
    """
-   echo "LibName;Nb_sequenced_read;Nb_trimmed_reads;Nb_mapped_reads;Median_insert_size" > mapping_stats.txt
+   echo "LibName;Nb_sequenced_read;Nb_trimmed_reads;Nb_mapped_reads;Nb_SI_mapped_reads;Median_insert_size" > mapping_stats.txt
    echo "${x.join('\n')}" | sort -k1 | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> mapping_stats.txt
    """
 }
@@ -670,7 +709,7 @@ process _report_mapping_uniq_stats_csv {
    // echoing all the channel with join('\n') into the mapping_stats.txt file
    script:
    """
-   echo "LibName;Nb_sequenced_read;Nb_trimmed_reads;Nb_mapped_reads;Median_insert_size" > mapping_uniq_stats.txt
+   echo "LibName;Nb_sequenced_read;Nb_trimmed_reads;Nb_mapped_reads;Nb_SI_mapped_reads;Median_insert_size" > mapping_uniq_stats.txt
    echo "${x.join('\n')}" | sort -k1 | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> mapping_uniq_stats.txt
    """
 }
@@ -678,10 +717,16 @@ process _report_mapping_uniq_stats_csv {
 /*
    PRODUCING csv files that serves as input design for nf-AnalysesOnCoordinates.nf
       This should be updated in aggreement with the subsequent pipeline.
+ch_genoCoved contains val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw")
+
+Want to have : 
+(LibIdx), LibName;LibBam;LibBW;LibSequenced;LibMapped;LibUnique;LibInsertSize;LibQpcrNorm;LibType;LibProj;LibExp;LibCondition;LibOrder;LibIsControl;LibControl
+
 */
 ch_genCoved
 .join(ch_raw_stats_2)
-.map{ it -> [it[4], it[0], it[2][0], it[3], it[5], it[7], 'NA', it[8],  1, '', '', '', '', '', '', '']}
+.map{ it -> [it[4], it[0], it[2][0], it[3], it[5], it[7], 'NA', it[9],  1, '', '', '', '', '', '', '']}
+//           idx,   Name,   Bam,     BW,    Seq,   Maped, Uniq, Insert, Qpcr
 .map{ it -> [it.join("\t")]}
 .collect()
 .set {ch_report_Aoc}
@@ -689,7 +734,7 @@ ch_genCoved
 
 ch_genCoved_uniq
 .join(ch_uniq_stats_2)
-.map{ it -> [it[4], it[0], it[2][0], it[3], it[5], it[7], it[7], it[8], 1, '', '', '', '', '', '', '']}
+.map{ it -> [it[4], it[0], it[2][0], it[3], it[5], it[7], it[7], it[9], 1, '', '', '', '', '', '', '']}
 .map{ it -> [it.join("\t")]}
 .collect()
 .set {ch_report_Aoc_uniq}
