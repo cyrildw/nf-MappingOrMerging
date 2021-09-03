@@ -36,18 +36,35 @@ nohup nextflow run -c nf-MappingOrMerging.config --name 'Toto_SR_only' nf-Mappin
 if (!params.merge_bam){
    if(params.bowtie_mapping){
       params.subread_mapping = false
+      params.hisat2_mapping = false
+      params.tophat2_mapping = false
       params.mapper_id = params.bowtie_id
    }
    else if(params.subread_mapping) { 
       params.bowtie_mapping = false
+      params.hisat2_mapping = false
+      params.tophat2_mapping = false
       params.mapper_id = params.subread_id
    }
+   else if(params.hisat2_mapping) { 
+      params.bowtie_mapping = false
+      params.subread_mapping = false
+      params.tophat2_mapping = false
+      params.mapper_id = params.hisat2_id
+   }
+   else if(params.tophat2_mapping) { 
+      params.bowtie_mapping = false
+      params.subread_mapping = false
+      params.hisat2_mapping = false
+      params.mapper_id = params.tophat2_id
+   }
+   
    /* Reading design.csv file
     getting 3 values: LibName, LibFastq1, LibFastq2
     adding the index to keep track of the input order. This value will only be kept in the reporting channels
     adding 5th value : prefix = LibName.mapper_id.ref_genome_prefix.pe
    */
-i=0;
+   i=0;
    Channel
       .fromPath(params.input_design)
       .splitCsv(header:true, sep:';')
@@ -66,7 +83,6 @@ i=0;
 #
 ##############################################################
 */   
-
 
    process _report_Nbseqreads {
       tag "$LibName"
@@ -111,8 +127,6 @@ i=0;
       """
    }
 
-
-
    process _report_Nbtrimed {
       tag "$LibName"
       input:
@@ -151,57 +165,55 @@ i=0;
 - Create a new channel for the reference ch_mapping_ref
    * if(!spike_in_norm){ch_mapping_ref = ${params.genome_ref} }
 */
-if(params.spike_in_norm){
-   process hybrid_genome {
-      // Concatenate the two genome (ref & si) and extract names of the seq_ids in both files.
-      label 'noContainer'
-      input:
-      path ref_genome from params.ref_genome
-      path spike_in_genome from params.spike_in_genome
-      output:
-      path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into ch_ref_to_index
-      path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into ch_mapping_ref
-      path "${params.ref_genome_prefix}.seq_ids.txt" into ch_ref_seq_id_File
-      path "${params.spike_in_genome_prefix}.seq_ids.txt" into ch_spike_in_seq_id_File
-      
-      """
-      cat ${ref_genome} ${spike_in_genome} > ${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa
-      grep ">" ${ref_genome} | sed 's/>\\([^[:blank:]]*\\)[[:blank:]]*.*/\\1/g' > ${params.ref_genome_prefix}.seq_ids.txt
-      grep ">" ${spike_in_genome} | sed 's/>\\([^[:blank:]]*\\)[[:blank:]]*.*/\\1/g' > ${params.spike_in_genome_prefix}.seq_ids.txt
-      """
-   }
-   process ref_seq_id_parsing {
-      label 'noContainer'
-      input:
-      path myFile from ch_ref_seq_id_File
-      output:
-      stdout into (ch_ref_genome_seq_id, ch_ref_genome_seq_id_4uniq)
-      
-      """
-      cat ${myFile}
-      """
-   }
-   process spike_in_seq_id_parsing {
-      label 'noContainer'
-      input:
-      path myFile from ch_spike_in_seq_id_File
-      output:
-      stdout into (ch_spike_in_genome_seq_id, ch_spike_in_genome_seq_id_4uniq)
-      
-      """
-      cat ${myFile}
-      """
-   }
-
-   
-}        
+   if(params.spike_in_norm){
+      process hybrid_genome {
+         // Concatenate the two genome (ref & si) and extract names of the seq_ids in both files.
+         label 'noContainer'
+         input:
+         path ref_genome from params.ref_genome
+         path spike_in_genome from params.spike_in_genome
+         output:
+         path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into ch_ref_to_index
+         path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into ch_mapping_ref
+         path "${params.ref_genome_prefix}.seq_ids.txt" into ch_ref_seq_id_File
+         path "${params.spike_in_genome_prefix}.seq_ids.txt" into ch_spike_in_seq_id_File
+         
+         """
+         cat ${ref_genome} ${spike_in_genome} > ${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa
+         grep ">" ${ref_genome} | sed 's/>\\([^[:blank:]]*\\)[[:blank:]]*.*/\\1/g' > ${params.ref_genome_prefix}.seq_ids.txt
+         grep ">" ${spike_in_genome} | sed 's/>\\([^[:blank:]]*\\)[[:blank:]]*.*/\\1/g' > ${params.spike_in_genome_prefix}.seq_ids.txt
+         """
+      }
+      process ref_seq_id_parsing {
+         label 'noContainer'
+         input:
+         path myFile from ch_ref_seq_id_File
+         output:
+         stdout into (ch_ref_genome_seq_id, ch_ref_genome_seq_id_4uniq)
+         
+         """
+         cat ${myFile}
+         """
+      }
+      process spike_in_seq_id_parsing {
+         label 'noContainer'
+         input:
+         path myFile from ch_spike_in_seq_id_File
+         output:
+         stdout into (ch_spike_in_genome_seq_id, ch_spike_in_genome_seq_id_4uniq)
+         
+         """
+         cat ${myFile}
+         """
+      }
+   }        
 
 
-else if(!params.spike_in_norm){
-   //In absence of spike in the ch_mapping_ref contains the ref_genome
-   ch_mapping_ref = Channel.fromPath( params.ref_genome)
-   ch_ref_to_index = Channel.fromPath( params.ref_genome)
-}
+   else if(!params.spike_in_norm){
+      //In absence of spike in the ch_mapping_ref contains the ref_genome
+      ch_mapping_ref = Channel.fromPath( params.ref_genome)
+      ch_ref_to_index = Channel.fromPath( params.ref_genome)
+   }
 if(params.bowtie_mapping){
    
    /*
@@ -255,6 +267,7 @@ if(params.bowtie_mapping){
 
    }
 }
+
 else if(params.subread_mapping){
 /* Step 2 indexing genome */
    process buildIndexSR {
@@ -307,9 +320,97 @@ else if(params.subread_mapping){
 
    }
 }
-//else if(params.hisat_mapping){
-//}
+else if(params.hisat2_mapping){
+   process buildIndexHS2 {
+      tag "$genome.baseName"
+      label "multiCpu"
+      input:
+      path genome from ch_ref_to_index
+         
+      output:
+      path 'genome.index*' into ch_index
+         
+      """
+      bowtie2-build -p ${task.cpus} ${genome} genome.index
+      """
+   }
 
+   process mapping_hisat2 {
+      echo true
+      tag "$LibName"
+      label 'multiCpu'
+      input:
+      tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from ch_design_mapping
+      //path genome from ch_mapping_ref
+      file index from ch_index
+
+      output:
+      tuple val(LibName),  val(MappingPrefix), file("${MappingPrefix}.bam") into ch_mapping
+      val LibName into ch_libName
+
+      """
+      hisat2 \
+      ${params.hisat2_options} \
+      -p ${task.cpus} \
+      -x genome.index \
+      -1 ${LibFastq1} \
+      -2 ${LibFastq2} 2>/dev/null | samtools view -bSh ${params.samtools_flag_filter} -q ${params.samtools_q_filter} - > ${MappingPrefix}.bam 
+      """
+      //-S ${MappingPrefix}.raw.sam 
+      /*
+      f 3 includes mapped reads and properly paired
+      F 4 excludes unmapped reads. [F 256 excludes secondary alignments]-> not used anymore
+      */
+
+   }
+
+}
+
+else if(params.tophat2_mapping){
+   process buildIndexTH2 {
+      tag "$genome.baseName"
+      label "multiCpu"
+      input:
+      path genome from ch_ref_to_index
+         
+      output:
+      path 'genome.index*' into ch_index
+         
+      """
+      bowtie2-build -p ${task.cpus} ${genome} genome.index
+      """
+   }
+
+   process mapping_tophat2 {
+      echo true
+      tag "$LibName"
+      label 'multiCpu'
+      input:
+      tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from ch_design_mapping
+      //path genome from ch_mapping_ref
+      file index from ch_index
+
+      output:
+      tuple val(LibName),  val(MappingPrefix), file("${MappingPrefix}.bam") into ch_mapping
+      val LibName into ch_libName
+
+      """
+      tophat2 \
+      ${params.hisat2_options} \
+      -p ${task.cpus} \
+      -x genome.index \
+      -1 ${LibFastq1} \
+      -2 ${LibFastq2} 2>/dev/null | samtools view -bSh ${params.samtools_flag_filter} -q ${params.samtools_q_filter} - > ${MappingPrefix}.bam 
+      """
+      //-S ${MappingPrefix}.raw.sam 
+      /*
+      f 3 includes mapped reads and properly paired
+      F 4 excludes unmapped reads. [F 256 excludes secondary alignments]-> not used anymore
+      */
+
+   }
+
+}
 }
 
 /*
@@ -628,7 +729,6 @@ process _report_SI_uniq_reads {
    """
 }
 
-
 process _report_insert_size {
    tag "$LibName"
    input:
@@ -643,7 +743,6 @@ process _report_insert_size {
    echo -n \$ins_size
    """
 }
-
 process _report_uniq_insert_size {
    tag "$LibName"
    input:
