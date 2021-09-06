@@ -269,7 +269,6 @@ if(params.bowtie_mapping){
 }
 
 else if(params.subread_mapping){
-/* Step 2 indexing genome */
    process buildIndexSR {
       tag "$genome.baseName"
       input:
@@ -284,7 +283,6 @@ else if(params.subread_mapping){
       """
    }
       /*
-   * Step 3. Mapping */
    process mapping_Subread {
       echo true
       tag "$LibName"
@@ -396,7 +394,7 @@ else if(params.tophat2_mapping){
 
       """
       tophat2 \
-      ${params.hisat2_options} \
+      ${params.tophat2_options} \
       -p ${task.cpus} \
       -x genome.index \
       -1 ${LibFastq1} \
