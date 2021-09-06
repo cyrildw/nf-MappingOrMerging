@@ -107,7 +107,7 @@ if (!params.merge_bam){
    process trimming {
       tag "$LibName"
       label "multiCpu"
-      publishDir "${params.outdir}/TrimedReads", mode: 'copy', //params.publish_dir_mode,
+      publishDir "${params.outdir}/${params.name}/TrimedReads", mode: 'copy', //params.publish_dir_mode,
       saveAs: { filename ->
                if (filename.endsWith('.fq.gz')) "./$filename"
                else null
@@ -489,7 +489,7 @@ else {
 process samtools {
    echo true
    tag "$LibName"
-   publishDir "${params.outdir}/Mapping", mode: 'copy' //params.publish_dir_mode,
+   publishDir "${params.outdir}/${params.name}/Mapping", mode: 'copy' //params.publish_dir_mode,
 
    input:
    tuple val(LibName),  val(prefix),  file(RawMapping) from ch_mapping
@@ -606,7 +606,7 @@ else{
 process genome_coverage_bam {
    tag "$LibName genome coverage .bam"
    label 'multiCpu'
-   publishDir "${params.outdir}/GenomeCoverage", mode: 'copy', //params.publish_dir_mode,
+   publishDir "${params.outdir}/${params.name}/GenomeCoverage", mode: 'copy', //params.publish_dir_mode,
       saveAs: { filename ->
                if (filename.endsWith('.bw')) "./$filename"
                else null
@@ -636,7 +636,7 @@ process genome_coverage_bam {
 process genome_coverage_rmdup {
    tag "$LibName genome coverage rmdup.bam"
    label 'multiCpu'
-   publishDir "${params.outdir}/GenomeCoverage", mode: 'copy', //params.publish_dir_mode,
+   publishDir "${params.outdir}/${params.name}/GenomeCoverage", mode: 'copy', //params.publish_dir_mode,
       saveAs: { filename ->
                if (filename.endsWith('.bw')) "./$filename"
                else null
@@ -786,7 +786,7 @@ ch_uniq_stats
 
 
 process _report_mapping_stats_csv {
-   publishDir "${params.outdir}/Stats", mode: 'copy'
+   publishDir "${params.outdir}/${params.name}/Stats", mode: 'copy'
    input:
    val x from ch_report_all_stats
    output:
@@ -800,7 +800,7 @@ process _report_mapping_stats_csv {
 }
 
 process _report_mapping_uniq_stats_csv {
-   publishDir "${params.outdir}/Stats", mode: 'copy'
+   publishDir "${params.outdir}/${params.name}/Stats", mode: 'copy'
    input:
    val x from ch_report_all_stats_uniq
    output:
