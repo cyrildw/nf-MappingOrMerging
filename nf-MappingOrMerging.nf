@@ -831,7 +831,7 @@ ch_genCoved_uniq
 
 
 process _report_AoC_csv {
-   publishDir "${params.outdir}", mode: 'copy'
+   publishDir "${params.outdir}/${params.name}/", mode: 'copy'
    input:
    val x from ch_report_Aoc
    output:
@@ -845,7 +845,7 @@ process _report_AoC_csv {
 }
 
 process _report_AoC_uniq_csv {
-   publishDir "${params.outdir}", mode: 'copy'
+   publishDir "${params.outdir}/${params.name}/", mode: 'copy'
    input:
    val x from ch_report_Aoc_uniq
    output:
