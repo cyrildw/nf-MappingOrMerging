@@ -100,10 +100,7 @@ if (!params.merge_bam){
       echo -n \$nb_reads
       """
    }
-/*
-   * Step 1. Trim the reads 
-   *   - using trim_galore
-   */
+
    process trimming {
       tag "$LibName"
       label "multiCpu"
@@ -207,208 +204,206 @@ if (!params.merge_bam){
          """
       }
    }        
-
-
    else if(!params.spike_in_norm){
       //In absence of spike in the ch_mapping_ref contains the ref_genome
       ch_mapping_ref = Channel.fromPath( params.ref_genome)
       ch_ref_to_index = Channel.fromPath( params.ref_genome)
    }
-if(params.bowtie_mapping){
-   
-   /*
-   * Step 2. Builds the genome index required by the mapping process
-   TODO   - check if genome is already indexed
-   TODO   - checkIfExists file basedir(params.genome)/params.ref_genome_prefix.1.bt2,2.bt2, 3.bt2, 4.bt2, rev.1.bt2, rev.2.bt2
-   TODO    - see https://github.com/SciLifeLab/NGI-smRNAseq/blob/master/main.nf
-   */
-   process buildIndexBT {
-      tag "$genome.baseName"
-      label "multiCpu"
-      input:
-      path genome from ch_ref_to_index
-         
-      output:
-      path 'genome.index*' into ch_index
-         
-      """
-      bowtie2-build --threads ${task.cpus} ${genome} genome.index
-      """
-   }
 
-   /*
-   * Step 3. Mapping */
-   process mapping_Bowtie2 {
-      echo true
-      tag "$LibName"
-      label 'multiCpu'
-      input:
-      tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from ch_design_mapping
-      //path genome from ch_mapping_ref
-      file index from ch_index
-
-      output:
-      tuple val(LibName),  val(MappingPrefix), file("${MappingPrefix}.bam") into ch_mapping
-      val LibName into ch_libName
-
-      """
-      bowtie2 \
-      ${params.bowtie_options} \
-      --threads ${task.cpus} \
-      -x genome.index \
-      -1 ${LibFastq1} \
-      -2 ${LibFastq2} 2>/dev/null | samtools view -bSh ${params.samtools_flag_filter} -q ${params.samtools_q_filter} - > ${MappingPrefix}.bam 
-      """
-      //-S ${MappingPrefix}.raw.sam 
+   if(params.bowtie_mapping){
+      
       /*
-      f 3 includes mapped reads and properly paired
-      F 4 excludes unmapped reads. [F 256 excludes secondary alignments]-> not used anymore
+      * Step 2. Builds the genome index required by the mapping process
+      TODO   - check if genome is already indexed
+      TODO   - checkIfExists file basedir(params.genome)/params.ref_genome_prefix.1.bt2,2.bt2, 3.bt2, 4.bt2, rev.1.bt2, rev.2.bt2
+      TODO    - see https://github.com/SciLifeLab/NGI-smRNAseq/blob/master/main.nf
       */
+      process buildIndexBT {
+         tag "$genome.baseName"
+         label "multiCpu"
+         input:
+         path genome from ch_ref_to_index
+            
+         output:
+         path 'genome.index*' into ch_index
+            
+         """
+         bowtie2-build --threads ${task.cpus} ${genome} genome.index
+         """
+      }
 
-   }
-}
-
-else if(params.subread_mapping){
-   process buildIndexSR {
-      tag "$genome.baseName"
-      input:
-      path genome from ch_ref_to_index
-
-
-      output:
-      path 'genome.index*' into ch_index
-      file("log")
-      """
-      subread-buildindex -o genome.index ${genome} 2>log 1>>log
-      """
-   }
       /*
-   process mapping_Subread {
-      echo true
-      tag "$LibName"
-      label 'multiCpu_short'
-      maxForks 8
-      input:
-      tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from ch_design_mapping
-      //path genome from ch_mapping_ref
-      file index from ch_index
+      * Step 3. Mapping */
+      process mapping_Bowtie2 {
+         echo true
+         tag "$LibName"
+         label 'multiCpu'
+         input:
+         tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from ch_design_mapping
+         //path genome from ch_mapping_ref
+         file index from ch_index
 
-      output:
-      tuple val(LibName), val(MappingPrefix), file("${MappingPrefix}.bam") into ch_mapping
-      val LibName into ch_libName
-      file("log")
-      file("${MappingPrefix}.tmp.bam*")
-      // --sv is raising some issues with L15_28_F_UNG1D_B150 for example. 
-      // add && rm ${MappingPrefix}.tmp.bam when it's working
-      """
-      subread-align \
-      -t 1 ${params.subread_options} \
-      -T ${task.cpus} \
-      -i genome.index \
-      -r ${LibFastq1} \
-      -R ${LibFastq2} \
-      -o ${MappingPrefix}.tmp.bam &>log && samtools view -bh ${params.samtools_flag_filter} -q ${params.samtools_q_filter} ${MappingPrefix}.tmp.bam  > ${MappingPrefix}.bam
-      """
+         output:
+         tuple val(LibName),  val(MappingPrefix), file("${MappingPrefix}.bam") into ch_mapping
+         val LibName into ch_libName
 
-      //-S ${MappingPrefix}.raw.sam 
-      /*
-      f 3 includes mapped reads and properly paired
-      F 4 excludes unmapped reads. [F 256 excludes secondary alignments]-> not used anymore
-      */
+         """
+         bowtie2 \
+         ${params.bowtie_options} \
+         --threads ${task.cpus} \
+         -x genome.index \
+         -1 ${LibFastq1} \
+         -2 ${LibFastq2} 2>/dev/null | samtools view -bSh ${params.samtools_flag_filter} -q ${params.samtools_q_filter} - > ${MappingPrefix}.bam 
+         """
+         //-S ${MappingPrefix}.raw.sam 
+         /*
+         f 3 includes mapped reads and properly paired
+         F 4 excludes unmapped reads. [F 256 excludes secondary alignments]-> not used anymore
+         */
+
+      }
+   }
+   else if(params.subread_mapping){
+      process buildIndexSR {
+         tag "$genome.baseName"
+         input:
+         path genome from ch_ref_to_index
+
+
+         output:
+         path 'genome.index*' into ch_index
+         file("log")
+         """
+         subread-buildindex -o genome.index ${genome} 2>log 1>>log
+         """
+      }
+         /*
+      process mapping_Subread {
+         echo true
+         tag "$LibName"
+         label 'multiCpu_short'
+         maxForks 8
+         input:
+         tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from ch_design_mapping
+         //path genome from ch_mapping_ref
+         file index from ch_index
+
+         output:
+         tuple val(LibName), val(MappingPrefix), file("${MappingPrefix}.bam") into ch_mapping
+         val LibName into ch_libName
+         file("log")
+         file("${MappingPrefix}.tmp.bam*")
+         // --sv is raising some issues with L15_28_F_UNG1D_B150 for example. 
+         // add && rm ${MappingPrefix}.tmp.bam when it's working
+         """
+         subread-align \
+         -t 1 ${params.subread_options} \
+         -T ${task.cpus} \
+         -i genome.index \
+         -r ${LibFastq1} \
+         -R ${LibFastq2} \
+         -o ${MappingPrefix}.tmp.bam &>log && samtools view -bh ${params.samtools_flag_filter} -q ${params.samtools_q_filter} ${MappingPrefix}.tmp.bam  > ${MappingPrefix}.bam
+         """
+
+         //-S ${MappingPrefix}.raw.sam 
+         /*
+         f 3 includes mapped reads and properly paired
+         F 4 excludes unmapped reads. [F 256 excludes secondary alignments]-> not used anymore
+         */
+
+      }
+   }
+   else if(params.hisat2_mapping){
+      process buildIndexHS2 {
+         tag "$genome.baseName"
+         label "multiCpu"
+         input:
+         path genome from ch_ref_to_index
+            
+         output:
+         path 'genome.index*' into ch_index
+            
+         """
+         bowtie2-build -p ${task.cpus} ${genome} genome.index
+         """
+      }
+
+      process mapping_hisat2 {
+         echo true
+         tag "$LibName"
+         label 'multiCpu'
+         input:
+         tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from ch_design_mapping
+         //path genome from ch_mapping_ref
+         file index from ch_index
+
+         output:
+         tuple val(LibName),  val(MappingPrefix), file("${MappingPrefix}.bam") into ch_mapping
+         val LibName into ch_libName
+
+         """
+         hisat2 \
+         ${params.hisat2_options} \
+         -p ${task.cpus} \
+         -x genome.index \
+         -1 ${LibFastq1} \
+         -2 ${LibFastq2} 2>/dev/null | samtools view -bSh ${params.samtools_flag_filter} -q ${params.samtools_q_filter} - > ${MappingPrefix}.bam 
+         """
+         //-S ${MappingPrefix}.raw.sam 
+         /*
+         f 3 includes mapped reads and properly paired
+         F 4 excludes unmapped reads. [F 256 excludes secondary alignments]-> not used anymore
+         */
+
+      }
 
    }
-}
-else if(params.hisat2_mapping){
-   process buildIndexHS2 {
-      tag "$genome.baseName"
-      label "multiCpu"
-      input:
-      path genome from ch_ref_to_index
-         
-      output:
-      path 'genome.index*' into ch_index
-         
-      """
-      bowtie2-build -p ${task.cpus} ${genome} genome.index
-      """
-   }
+   else if(params.tophat2_mapping){
+      process buildIndexTH2 {
+         tag "$genome.baseName"
+         label "multiCpu"
+         input:
+         path genome from ch_ref_to_index
+            
+         output:
+         path 'genome.index*' into ch_index
+            
+         """
+         bowtie2-build -p ${task.cpus} ${genome} genome.index
+         """
+      }
 
-   process mapping_hisat2 {
-      echo true
-      tag "$LibName"
-      label 'multiCpu'
-      input:
-      tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from ch_design_mapping
-      //path genome from ch_mapping_ref
-      file index from ch_index
+      process mapping_tophat2 {
+         echo true
+         tag "$LibName"
+         label 'multiCpu'
+         input:
+         tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from ch_design_mapping
+         //path genome from ch_mapping_ref
+         file index from ch_index
 
-      output:
-      tuple val(LibName),  val(MappingPrefix), file("${MappingPrefix}.bam") into ch_mapping
-      val LibName into ch_libName
+         output:
+         tuple val(LibName),  val(MappingPrefix), file("${MappingPrefix}.bam") into ch_mapping
+         val LibName into ch_libName
 
-      """
-      hisat2 \
-      ${params.hisat2_options} \
-      -p ${task.cpus} \
-      -x genome.index \
-      -1 ${LibFastq1} \
-      -2 ${LibFastq2} 2>/dev/null | samtools view -bSh ${params.samtools_flag_filter} -q ${params.samtools_q_filter} - > ${MappingPrefix}.bam 
-      """
-      //-S ${MappingPrefix}.raw.sam 
-      /*
-      f 3 includes mapped reads and properly paired
-      F 4 excludes unmapped reads. [F 256 excludes secondary alignments]-> not used anymore
-      */
+         """
+         tophat2 \
+         ${params.tophat2_options} \
+         -p ${task.cpus} \
+         -x genome.index \
+         -1 ${LibFastq1} \
+         -2 ${LibFastq2} 2>/dev/null | samtools view -bSh ${params.samtools_flag_filter} -q ${params.samtools_q_filter} - > ${MappingPrefix}.bam 
+         """
+         //-S ${MappingPrefix}.raw.sam 
+         /*
+         f 3 includes mapped reads and properly paired
+         F 4 excludes unmapped reads. [F 256 excludes secondary alignments]-> not used anymore
+         */
 
-   }
-
-}
-
-else if(params.tophat2_mapping){
-   process buildIndexTH2 {
-      tag "$genome.baseName"
-      label "multiCpu"
-      input:
-      path genome from ch_ref_to_index
-         
-      output:
-      path 'genome.index*' into ch_index
-         
-      """
-      bowtie2-build -p ${task.cpus} ${genome} genome.index
-      """
-   }
-
-   process mapping_tophat2 {
-      echo true
-      tag "$LibName"
-      label 'multiCpu'
-      input:
-      tuple val(LibName), file(LibFastq1), file(LibFastq2), MappingPrefix from ch_design_mapping
-      //path genome from ch_mapping_ref
-      file index from ch_index
-
-      output:
-      tuple val(LibName),  val(MappingPrefix), file("${MappingPrefix}.bam") into ch_mapping
-      val LibName into ch_libName
-
-      """
-      tophat2 \
-      ${params.tophat2_options} \
-      -p ${task.cpus} \
-      -x genome.index \
-      -1 ${LibFastq1} \
-      -2 ${LibFastq2} 2>/dev/null | samtools view -bSh ${params.samtools_flag_filter} -q ${params.samtools_q_filter} - > ${MappingPrefix}.bam 
-      """
-      //-S ${MappingPrefix}.raw.sam 
-      /*
-      f 3 includes mapped reads and properly paired
-      F 4 excludes unmapped reads. [F 256 excludes secondary alignments]-> not used anymore
-      */
+      }
 
    }
 
-}
 }
 
 /*
