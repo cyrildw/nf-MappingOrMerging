@@ -323,7 +323,7 @@ if (!params.merge_bam){
          path 'genome.index*' into ch_index
             
          """
-         bowtie2-build -threads ${task.cpus} ${genome} genome.index
+         bowtie2-build --threads ${task.cpus} ${genome} genome.index
          """
       }
 
@@ -387,11 +387,8 @@ if (!params.merge_bam){
 
          """
          tophat2 \
-         ${params.tophat2_options} \
-         -p ${task.cpus} \
-         -x genome.index \
-         -1 ${LibFastq1} \
-         -2 ${LibFastq2} 2>/dev/null | samtools view -bSh ${params.samtools_flag_filter} -q ${params.samtools_q_filter} - > ${MappingPrefix}.bam 
+         ${params.tophat2_options} -p ${task.cpus} --output_dir ./ \
+         genome.index ${LibFastq1} ${LibFastq2}  2>/dev/null | samtools view -bSh ${params.samtools_flag_filter} -q ${params.samtools_q_filter} - > ${MappingPrefix}.bam 
          """
          //-S ${MappingPrefix}.raw.sam 
          /*
