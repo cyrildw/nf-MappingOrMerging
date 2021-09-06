@@ -142,7 +142,6 @@ if (!params.merge_bam){
       """
    }
 
-
 /*
 #############################################################
 #
@@ -162,6 +161,7 @@ if (!params.merge_bam){
 - Create a new channel for the reference ch_mapping_ref
    * if(!spike_in_norm){ch_mapping_ref = ${params.genome_ref} }
 */
+
    if(params.spike_in_norm){
       process hybrid_genome {
          // Concatenate the two genome (ref & si) and extract names of the seq_ids in both files.
@@ -277,7 +277,6 @@ if (!params.merge_bam){
          subread-buildindex -o genome.index ${genome} 2>log 1>>log
          """
       }
-         /*
       process mapping_Subread {
          echo true
          tag "$LibName"
