@@ -323,7 +323,7 @@ if (!params.merge_bam){
          path 'genome.index*' into ch_index
             
          """
-         bowtie2-build -p ${task.cpus} ${genome} genome.index
+         bowtie2-build -threads ${task.cpus} ${genome} genome.index
          """
       }
 
@@ -368,7 +368,7 @@ if (!params.merge_bam){
          path 'genome.index*' into ch_index
             
          """
-         bowtie2-build -p ${task.cpus} ${genome} genome.index
+         bowtie2-build --threads ${task.cpus} ${genome} genome.index
          """
       }
 
