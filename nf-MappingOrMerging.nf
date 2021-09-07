@@ -100,7 +100,6 @@ if (!params.merge_bam){
       echo -n \$nb_reads
       """
    }
-
    process trimming {
       tag "$LibName"
       label "multiCpu"
@@ -117,10 +116,15 @@ if (!params.merge_bam){
       tuple val(LibName), file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz") into ch_trimed_reads //don't need the LibIdx since it's already in the ch_report_1
       script:
       """
-      trim_galore ${params.trim_galore_options} \
-      --cores ${task.cpus} \
-      --basename ${LibName} \
-      ${LibFastq1} ${LibFastq2}
+      if(! ${params.skip_trimming} ); then
+         trim_galore ${params.trim_galore_options} \
+         --cores ${task.cpus} \
+         --basename ${LibName} \
+         ${LibFastq1} ${LibFastq2}
+      else
+         ln -s ${LibFastq1} ${LibName}_val_1.fq.gz
+         ln -s ${LibFastq2} ${LibName}_val_2.fq.gz
+      fi
       """
    }
 
@@ -133,12 +137,16 @@ if (!params.merge_bam){
 
       script:
       """
-      nb_line1=`gunzip -dc ${LibFastq1} | wc -l`
-      nb_line2=`gunzip -dc ${LibFastq2} | wc -l`
-      let nb_reads1=\$nb_line1/4
-      let nb_reads2=\$nb_line2/4
-      let nb_reads=\$nb_reads1+\$nb_reads2
-      echo -n \$nb_reads
+      if(! ${params.skip_trimming} ); then
+         nb_line1=`gunzip -dc ${LibFastq1} | wc -l`
+         nb_line2=`gunzip -dc ${LibFastq2} | wc -l`
+         let nb_reads1=\$nb_line1/4
+         let nb_reads2=\$nb_line2/4
+         let nb_reads=\$nb_reads1+\$nb_reads2
+         echo -n \$nb_reads
+      else 
+         echo 'NA'
+      fi
       """
    }
 
