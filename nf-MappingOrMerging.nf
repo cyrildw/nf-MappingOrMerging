@@ -112,7 +112,7 @@ if (!params.merge_bam){
       input:
       tuple val(LibName), val(LibIdx), file(LibFastq1), file(LibFastq2), MappingPrefix from design_reads_csv
       output:
-      tuple val(LibName), file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz"), MappingPrefix into ch_design_mapping
+      tuple val(LibName), file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz"), MappingPrefix into (ch_design_mapping, ch_design_mapping_test)
       tuple val(LibName), file("${LibName}_val_1.fq.gz"), file("${LibName}_val_2.fq.gz") into ch_trimed_reads //don't need the LibIdx since it's already in the ch_report_1
       script:
       """
@@ -127,7 +127,6 @@ if (!params.merge_bam){
       fi
       """
    }
-
    process _report_Nbtrimed {
       tag "$LibName"
       input:
@@ -170,25 +169,31 @@ if (!params.merge_bam){
    * if(!spike_in_norm){ch_mapping_ref = ${params.genome_ref} }
 */
 
-   if(params.spike_in_norm){
-      process hybrid_genome {
-         // Concatenate the two genome (ref & si) and extract names of the seq_ids in both files.
-         label 'noContainer'
-         input:
-         path ref_genome from params.ref_genome
-         path spike_in_genome from params.spike_in_genome
-         output:
-         path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into ch_ref_to_index
-         path "${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa" into ch_mapping_ref
-         path "${params.ref_genome_prefix}.seq_ids.txt" into ch_ref_seq_id_File
-         path "${params.spike_in_genome_prefix}.seq_ids.txt" into ch_spike_in_seq_id_File
-         
-         """
+   process genome_init {
+      // if spike in is on : 
+      // Concatenate the two genome (ref & si) and extract names of the seq_ids in both files.
+      // else just give the genome as channel
+      label 'noContainer'
+      input:
+      path ref_genome from params.ref_genome
+      path spike_in_genome from params.spike_in_genome
+      output:
+      path "*.fa" into ch_ref_to_index
+      path "*.fa" into ch_mapping_ref
+      path "${params.ref_genome_prefix}.seq_ids.txt" into ch_ref_seq_id_File
+      path "${params.spike_in_genome_prefix}.seq_ids.txt" into ch_spike_in_seq_id_File
+      
+      """
+      if(${params.spike_in_norm} ); then
          cat ${ref_genome} ${spike_in_genome} > ${params.ref_genome_prefix}_${params.spike_in_genome_prefix}.fa
-         grep ">" ${ref_genome} | sed 's/>\\([^[:blank:]]*\\)[[:blank:]]*.*/\\1/g' > ${params.ref_genome_prefix}.seq_ids.txt
-         grep ">" ${spike_in_genome} | sed 's/>\\([^[:blank:]]*\\)[[:blank:]]*.*/\\1/g' > ${params.spike_in_genome_prefix}.seq_ids.txt
-         """
-      }
+      else
+         ln -s ${ref_genome} genome.fa
+      fi
+      grep ">" ${ref_genome} | sed 's/>\\([^[:blank:]]*\\)[[:blank:]]*.*/\\1/g' > ${params.ref_genome_prefix}.seq_ids.txt
+      grep ">" ${spike_in_genome} | sed 's/>\\([^[:blank:]]*\\)[[:blank:]]*.*/\\1/g' > ${params.spike_in_genome_prefix}.seq_ids.txt
+      """
+   }
+   if(params.spike_in_norm){
       process ref_seq_id_parsing {
          label 'noContainer'
          input:
@@ -217,7 +222,7 @@ if (!params.merge_bam){
       ch_mapping_ref = Channel.fromPath( params.ref_genome)
       ch_ref_to_index = Channel.fromPath( params.ref_genome)
    }
-
+ch_design_mapping_test.view()
    if(params.bowtie_mapping){
       
       /*
