@@ -222,7 +222,7 @@ if (!params.merge_bam){
       ch_mapping_ref = Channel.fromPath( params.ref_genome)
       ch_ref_to_index = Channel.fromPath( params.ref_genome)
    }
-ch_design_mapping_test.view()
+
    if(params.bowtie_mapping){
       
       /*
@@ -434,7 +434,6 @@ else {
       .splitCsv(header:true, sep:';')
       .map { row -> [ row.LibName, row.LibExp,i++, file("$params.input_dir/$row.LibBam", checkIfExists: true), file("$params.input_dir/${row.LibBam}.bai", checkIfExists: true), "$row.LibName.${params.mapper_id}.${params.ref_genome_prefix}"+".merged" ] }
       .into { design_bam_csv; test_design }
-      test_design.view()
 
    design_bam_csv
       .map{ it -> [it[1],it[2], it[3] ]}
