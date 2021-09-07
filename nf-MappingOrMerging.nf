@@ -145,7 +145,7 @@ if (!params.merge_bam){
          let nb_reads=\$nb_reads1+\$nb_reads2
          echo -n \$nb_reads
       else 
-         echo 'NA'
+         echo -n 'NA'
       fi
       """
    }
