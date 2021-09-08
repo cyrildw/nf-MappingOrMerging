@@ -217,12 +217,7 @@ if (!params.merge_bam){
          """
       }
    }        
-   else if(!params.spike_in_norm){
-      //In absence of spike in the ch_mapping_ref contains the ref_genome
-      ch_mapping_ref = Channel.fromPath( params.ref_genome)
-      ch_ref_to_index = Channel.fromPath( params.ref_genome)
-   }
-
+ 
    if(params.bowtie_mapping){
       
       /*
