@@ -518,7 +518,7 @@ if(params.spike_in_norm){
    */
    process si_mapping_split{
       tag "$LibName"
-      publishDir "${params.outdir}/${params.name}/Mapping", mode: 'copy' //params.publish_dir_mode,
+      publishDir "${params.outdir}/${params.name}/Mapping", mode: 'copy', //params.publish_dir_mode,
       saveAs: { filename ->
          if (filename.endsWith('.split_ref.sorted.bam*')) "./$filename"
          else null
@@ -560,7 +560,7 @@ if(params.spike_in_norm){
    }
    process si_mapping_uniq_split{
       tag "$LibName"
-      publishDir "${params.outdir}/${params.name}/Mapping", mode: 'copy' //params.publish_dir_mode,
+      publishDir "${params.outdir}/${params.name}/Mapping", mode: 'copy', //params.publish_dir_mode,
       saveAs: { filename ->
          if (filename.endsWith('.split_ref.sorted.rmdup.bam*')) "./$filename"
          else null
