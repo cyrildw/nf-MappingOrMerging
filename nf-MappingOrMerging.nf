@@ -485,8 +485,10 @@ else {
 process samtools {
    echo true
    tag "$LibName"
-   publishDir "${params.outdir}/${params.name}/Mapping", mode: 'copy' //params.publish_dir_mode,
-
+   /* add a condition when spike in do not report mapping here*/
+   if(!params.spike_in_norm){
+      publishDir "${params.outdir}/${params.name}/Mapping", mode: 'copy' //params.publish_dir_mode,
+   }
    input:
    tuple val(LibName),  val(prefix),  file(RawMapping) from ch_mapping
    output:
@@ -516,6 +518,11 @@ if(params.spike_in_norm){
    */
    process si_mapping_split{
       tag "$LibName"
+      publishDir "${params.outdir}/${params.name}/Mapping", mode: 'copy' //params.publish_dir_mode,
+      saveAs: { filename ->
+         if (filename.endsWith('.split_ref.sorted.bam*')) "./$filename"
+         else null
+      }
       input:
       tuple val(LibName), val(prefix), path(bamFiles) from ch_samtooled
       val(ref_seq_ids) from ch_ref_genome_seq_id.splitText().map{ it.replaceAll("\n", "")}.collect()
@@ -553,6 +560,12 @@ if(params.spike_in_norm){
    }
    process si_mapping_uniq_split{
       tag "$LibName"
+      publishDir "${params.outdir}/${params.name}/Mapping", mode: 'copy' //params.publish_dir_mode,
+      saveAs: { filename ->
+         if (filename.endsWith('.split_ref.sorted.rmdup.bam*')) "./$filename"
+         else null
+      }
+
       input:
       tuple val(LibName), val(prefix), path(bamFiles) from ch_samtooled_rmdup
       val(ref_seq_ids) from ch_ref_genome_seq_id_4uniq.splitText().map{ it.replaceAll("\n", "")}.collect()
