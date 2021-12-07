@@ -520,7 +520,8 @@ if(params.spike_in_norm){
       tag "$LibName"
       publishDir "${params.outdir}/${params.name}/Mapping", mode: 'copy', //params.publish_dir_mode,
       saveAs: { filename ->
-         if (filename.endsWith('.split_ref.sorted.bam*')) "./$filename"
+         if (filename.endsWith('.split_ref.sorted.bam')) "./$filename"
+         else if (filename.endsWith('.split_ref.sorted.bam.bai')) "./$filename"
          else null
       }
       input:
@@ -562,7 +563,8 @@ if(params.spike_in_norm){
       tag "$LibName"
       publishDir "${params.outdir}/${params.name}/Mapping", mode: 'copy', //params.publish_dir_mode,
       saveAs: { filename ->
-         if (filename.endsWith('.split_ref.sorted.rmdup.bam*')) "./$filename"
+         if (filename.endsWith('.split_ref.sorted.rmdup.bam')) "./$filename"
+         else if (filename.endsWith('.split_ref.sorted.rmdup.bam.bai')) "./$filename"
          else null
       }
 
