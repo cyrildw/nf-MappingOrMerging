@@ -80,7 +80,7 @@ if (!params.merge_bam){
    process merge_read_files{
       tag "$LibName"
       input:
-      tuple val(LibName), LibIdx, LibFastq1, LibFastq2, MappingPrefix from ch_Toreport_reads_nb
+      tuple val(LibName), LibIdx, LibFastq1, LibFastq2, MappingPrefix from ch_merge_reads
       output: 
       tuple val(LibName), LibIdx, file("${LibName}_R1.fq.gz"), file("${LibName}_R2.fq.gz"), MappingPrefix into ( design_reads_csv, ch_Toreport_reads_nb )
       script:
