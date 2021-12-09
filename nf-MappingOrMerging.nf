@@ -88,7 +88,7 @@ if (!params.merge_bam){
       """
       echo "Sup 1"
       gunzip -dkc $workflow.launchDir/$params.input_dir/${LibFastq1.split(",").join(" $workflow.launchDir/$params.input_dir/")} | gzip > ${LibName}_R1.fq.gz
-      gunzip -dkc $workflow.launchDir/$params.input_dir/"${LibFastq2.split(",").join(" $workflow.launchDir/$params.input_dir/")} | gzip > ${LibName}_R2.fq.gz
+      gunzip -dkc $workflow.launchDir/$params.input_dir/${LibFastq2.split(",").join(" $workflow.launchDir/$params.input_dir/")} | gzip > ${LibName}_R2.fq.gz
       """
 
       else
