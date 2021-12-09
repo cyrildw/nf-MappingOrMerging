@@ -68,9 +68,35 @@ if (!params.merge_bam){
    Channel
       .fromPath(params.input_design)
       .splitCsv(header:true, sep:';')
+      .map { row -> [ row.LibName, i++, "$row.LibFastq1", "$row.LibFastq2", "$row.LibName.${params.mapper_id}.${params.ref_genome_prefix}"+".pe" ] }
+      .set {ch_merge_reads}
+   
+   /*Channel
+      .fromPath(params.input_design)
+      .splitCsv(header:true, sep:';')
       .map { row -> [ row.LibName, i++, file("$params.input_dir/$row.LibFastq1", checkIfExists: true), file("$params.input_dir/$row.LibFastq2", checkIfExists: true), "$row.LibName.${params.mapper_id}.${params.ref_genome_prefix}"+".pe" ] }
       .into { design_reads_csv; ch_Toreport_reads_nb }
+*/
+   process merge_read_files{
+      tag "$LibName"
+      input:
+      tuple val(LibName), LibIdx, LibFastq1, LibFastq2, MappingPrefix from ch_Toreport_reads_nb
+      output: 
+      tuple val(LibName), LibIdx, file("${LibName}_R1.fq.gz"), file("${LibName}_R2.fq.gz"), MappingPrefix into ( design_reads_csv, ch_Toreport_reads_nb )
+      script:
+      if( LibFastq1.split(",").size() != 1 )
+      """
+      echo "Sup 1"
+      gunzip -dkc "$params.input_dir/"${LibFastq1.split(",").join(" $params.input_dir/")} | gzip > "${LibName}_R1.fq.gz"
+      gunzip -dkc "$params.input_dir/"${LibFastq2.split(",").join(" $params.input_dir/")} | gzip > "${LibName}_R2.fq.gz"
+      """
 
+      else
+      """
+      ln -s "$params.input_dir/${LibFastq1}" "${LibName}_R1.fq.gz"
+      ln -s "$params.input_dir/${LibFastq2}" "${LibName}_R2.fq.gz"
+      """
+   }
 
 /*
 #############################################################
