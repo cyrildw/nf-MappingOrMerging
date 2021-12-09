@@ -93,8 +93,8 @@ if (!params.merge_bam){
 
       else
       """
-      ln -s "$params.input_dir/${LibFastq1}" "${LibName}_R1.fq.gz"
-      ln -s "$params.input_dir/${LibFastq2}" "${LibName}_R2.fq.gz"
+      ln -s $params.input_dir/${LibFastq1} ${LibName}_R1.fq.gz
+      ln -s $params.input_dir/${LibFastq2} ${LibName}_R2.fq.gz
       """
    }
 
