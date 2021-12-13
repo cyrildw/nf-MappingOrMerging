@@ -138,7 +138,7 @@ gunzip -dkc $workflow.launchDir/$params.input_dir/${LibFastq2.split(",").join(" 
       label "multiCpu"
       publishDir "${params.outdir}/${params.name}/TrimedReads", mode: 'copy', //params.publish_dir_mode,
       saveAs: { filename ->
-               if (filename.endsWith('.fq.gz')) "./$filename"
+               if ((!params.skip_trimming) && filename.endsWith('.fq.gz')) "./$filename"
                else null
       }
 
