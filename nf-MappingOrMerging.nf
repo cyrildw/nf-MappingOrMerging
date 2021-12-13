@@ -81,7 +81,7 @@ if (!params.merge_bam){
       tag "$LibName"
       publishDir "${params.outdir}/${params.name}/MergedReads", mode: 'copy', //params.publish_dir_mode,
       saveAs: { filename ->
-               if (filename.endsWith('.fq.gz')) "./$filename"
+               if (LibFastq1.split(",").size() != 1 && filename.endsWith('.fq.gz')) "./$filename"
                else null
       }
       input:
