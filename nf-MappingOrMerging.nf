@@ -68,15 +68,16 @@ if (!params.merge_bam){
    Channel
       .fromPath(params.input_design)
       .splitCsv(header:true, sep:';')
-      .map { row -> [ row.LibName, i++, "$row.LibFastq1", "$row.LibFastq2", "$row.LibName.${params.mapper_id}.${params.ref_genome_prefix}"+".pe" ] }
-      .set {ch_merge_reads}
-   
+      .map { row -> [ row.LibName, i++, file("$params.input_dir/$row.LibFastq1", checkIfExists: true), file("$params.input_dir/$row.LibFastq2", checkIfExists: true), "$row.LibName.${params.mapper_id}.${params.ref_genome_prefix}"+".pe" ] }
+      .into { design_reads_csv; ch_Toreport_reads_nb }
+
    /*Channel
       .fromPath(params.input_design)
       .splitCsv(header:true, sep:';')
-      .map { row -> [ row.LibName, i++, file("$params.input_dir/$row.LibFastq1", checkIfExists: true), file("$params.input_dir/$row.LibFastq2", checkIfExists: true), "$row.LibName.${params.mapper_id}.${params.ref_genome_prefix}"+".pe" ] }
-      .into { design_reads_csv; ch_Toreport_reads_nb }
-*/
+      .map { row -> [ row.LibName, i++, "$row.LibFastq1", "$row.LibFastq2", "$row.LibName.${params.mapper_id}.${params.ref_genome_prefix}"+".pe" ] }
+      .set {ch_merge_reads}
+
+
    process merge_read_files{
       tag "$LibName"
       publishDir "${params.outdir}/${params.name}/MergedReads", mode: 'copy', //params.publish_dir_mode,
@@ -102,6 +103,7 @@ if (!params.merge_bam){
       ln -s $workflow.launchDir/$params.input_dir/${LibFastq2} ${LibName}_R2.fq.gz
       """
    }
+   */
 /*
 gunzip -dkc $workflow.launchDir/$params.input_dir/${LibFastq1.split(",").join(" $workflow.launchDir/$params.input_dir/")} | gzip > ${LibName}_R1.fq.gz
 gunzip -dkc $workflow.launchDir/$params.input_dir/${LibFastq2.split(",").join(" $workflow.launchDir/$params.input_dir/")} | gzip > ${LibName}_R2.fq.gz
