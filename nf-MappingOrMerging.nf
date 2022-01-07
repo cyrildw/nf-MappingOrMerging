@@ -842,7 +842,7 @@ process _report_mapping_stats_csv {
    script:
    """
    echo "LibName;Nb_sequenced_read;Nb_trimmed_reads;Nb_mapped_reads;Nb_SI_mapped_reads;Median_insert_size" > mapping_stats.txt
-   echo "${x.join('\n')}" | sort -k1 | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> mapping_stats.txt
+   echo "${x.join('\n')}" | sort -k1 -n | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> mapping_stats.txt
    """
 }
 
@@ -856,7 +856,7 @@ process _report_mapping_uniq_stats_csv {
    script:
    """
    echo "LibName;Nb_sequenced_read;Nb_trimmed_reads;Nb_mapped_reads;Nb_SI_mapped_reads;Median_insert_size" > mapping_uniq_stats.txt
-   echo "${x.join('\n')}" | sort -k1 | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> mapping_uniq_stats.txt
+   echo "${x.join('\n')}" | sort -k1 -n | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> mapping_uniq_stats.txt
    """
 }
 
@@ -898,7 +898,7 @@ process _report_AoC_csv {
    script:
    """
    echo "LibName;LibBam;LibBW;LibSequenced;LibMapped;LibUnique;LibInsertSize;LibQpcrNorm;LibType;LibProj;LibExp;LibCondition;LibOrder;LibIsControl;LibControl" > ${params.name}.bigwigDesign.csv
-   echo "${x.join('\n')}" | sort -k1 | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> ${params.name}.bigwigDesign.csv
+   echo "${x.join('\n')}" | sort -k1 -n | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> ${params.name}.bigwigDesign.csv
    """
 }
 
@@ -912,6 +912,6 @@ process _report_AoC_uniq_csv {
    script:
    """
    echo "LibName;LibBam;LibBW;LibSequenced;LibMapped;LibUnique;LibInsertSize;LibQpcrNorm;LibType;LibProj;LibExp;LibCondition;LibOrder;LibIsControl;LibControl" > ${params.name}.rmdup.bigwigDesign.csv
-  echo "${x.join('\n')}" | sort -k1 | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> ${params.name}.rmdup.bigwigDesign.csv
+  echo "${x.join('\n')}" | sort -k1 -n | awk '{for(i=2;i<=NF;i++) printf \$i";"; print ""}' >> ${params.name}.rmdup.bigwigDesign.csv
    """
 }
