@@ -176,12 +176,13 @@ gunzip -dkc $workflow.launchDir/$params.input_dir/${LibFastq2.split(",").join(" 
       script:
       """
       if(! ${params.skip_trimming} ); then
-         nb_line1=`gunzip -dc ${LibFastq1} | wc -l`
-         nb_line2=`gunzip -dc ${LibFastq2} | wc -l`
-         let nb_reads1=\$nb_line1/4
-         let nb_reads2=\$nb_line2/4
-         let nb_reads=\$nb_reads1+\$nb_reads2
-         echo -n \$nb_reads
+      pigz -dc ${LibFastq1} ${LibFastq2} | awk 'NR%4==1{c++} END { printf "%s", c;}'
+      #   nb_line1=`gunzip -dc ${LibFastq1} | wc -l`
+      #   nb_line2=`gunzip -dc ${LibFastq2} | wc -l`
+      #   let nb_reads1=\$nb_line1/4
+      #   let nb_reads2=\$nb_line2/4
+      #   let nb_reads=\$nb_reads1+\$nb_reads2
+      #   echo -n \$nb_reads
       else 
          echo -n 'NA'
       fi
