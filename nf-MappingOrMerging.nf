@@ -677,7 +677,9 @@ if(params.strand_specific_bigwigs){
       strand="minus"
       samtools view -h -f 83 ${bamFiles[0]}  > ${prefix}.\$strand.sam
       samtools view -f 163 ${bamFiles[0]}  >> ${prefix}.\$strand.sam
-      samtools sort ${prefix}.\$strand.sam | samtools view -b - > ${prefix}.\$strand.sorted.bam && samtools index ${prefix}.\$strand.sorted.bam
+      samtools view -bS ${prefix}.\$strand.sam > ${prefix}.\$strand.bam
+      samtools sort  ${prefix}.\$strand.bam  ${prefix}.\$strand.sorted
+      samtools index ${prefix}.\$strand.sorted.bam
       bamCoverage \
          -b  ${prefix}.\$strand.sorted.bam \
          -o ${prefix}.bin${params.bin_size}.RPM.rmdup.\$strand.bamCoverage.bw \
@@ -688,7 +690,9 @@ if(params.strand_specific_bigwigs){
       strand="plus"
       samtools view -h -f 99 ${bamFiles[0]}  > ${prefix}.\$strand.sam
       samtools view -f 147 ${bamFiles[0]}  >> ${prefix}.\$strand.sam
-      samtools sort ${prefix}.\$strand.sam | samtools view -b - > ${prefix}.\$strand.sorted.bam && samtools index ${prefix}.\$strand.sorted.bam
+      samtools view -bS ${prefix}.\$strand.sam > ${prefix}.\$strand.bam
+      samtools sort  ${prefix}.\$strand.bam  ${prefix}.\$strand.sorted
+      samtools index ${prefix}.\$strand.sorted.bam
       bamCoverage \
          -b  ${prefix}.\$strand.sorted.bam \
          -o ${prefix}.bin${params.bin_size}.RPM.rmdup.\$strand.bamCoverage.bw \
