@@ -613,7 +613,7 @@ if(params.spike_in_norm){
       val(ref_seq_ids) from ch_ref_genome_seq_id_4uniq.splitText().map{ it.replaceAll("\n", "")}.collect()
       val(si_seq_ids) from ch_spike_in_genome_seq_id_4uniq.splitText().map{ it.replaceAll("\n", "")}.collect()
       output:
-      tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.rmdup.bam*"), stdout into ch_to_bamCov_rmdup
+      tuple val(LibName), val(prefix), file("${prefix}.split_ref.sorted.rmdup.bam*"), stdout into (ch_to_bamCov_rmdup, ch_to_strandSpecBw_rmdup)
       tuple val(LibName), file("${prefix}.split_ref.sorted.rmdup.bam*") into (ch_to_count_uniq_mapped_reads, ch_insert_size_uniq)
       tuple val(LibName), file("${prefix}.split_spike_in.sorted.rmdup.bam*") into ch_to_count_SI_uniq_mapped_reads
 
@@ -650,10 +650,55 @@ else{
    //Set the channels as the ouput of samtools process, adding 1 as scale factor
    ch_samtooled.map{ it -> [it[0],it[1],it[2],"0\n" ] }.set{ ch_to_bamCov }
    ch_mapped_reads.into{ ch_to_count_mapped_reads; ch_to_count_SI_mapped_reads ; ch_insert_size}
-   ch_samtooled_rmdup.map{ it -> [it[0],it[1],it[2],"0\n" ] }.set{ ch_to_bamCov_rmdup }
+   ch_samtooled_rmdup.map{ it -> [it[0],it[1],it[2],"0\n" ] }.into{ ch_to_bamCov_rmdup; ch_to_strandSpecBw_rmdup }
    ch_mapped_uniq_reads.into{ ch_to_count_uniq_mapped_reads; ch_to_count_SI_uniq_mapped_reads ; ch_insert_size_uniq }
 }
 
+
+if(params.strand_specific_bigwigs){
+
+   process strand_spec_bw {
+      tag "$LibName strandspec rmdup.bam"
+      label 'multiCpu'
+      publishDir "${params.outdir}/${params.name}/GenomeCoverage", mode: 'copy', //params.publish_dir_mode,
+         saveAs: { filename ->
+                  if (filename.endsWith('.bw')) "./$filename"
+                  else null
+         }
+      input:
+      tuple val(LibName), val(prefix), path(bamFiles), val(scaleF) from ch_to_strandSpecBw_rmdup.map{ ti->[ ti[0], ti[1], ti[2], ti[3].replaceAll("\n", "")]}
+      output:
+      //tuple val(LibName), val(prefix), bamFiles, val("${prefix}.bin${params.bin_size}.RPM.rmdup.bamCoverage.bw") into ch_genCoved_uniq
+      file("${prefix}.bin${params.bin_size}.RPM.rmdup.*.bamCoverage.bw")
+      file("${prefix}.*sam")
+      file("${prefix}.*sorted.bam*")
+
+      """
+      strand="minus"
+      samtools view -h -f 83 ${bamFiles[0]}  > ${prefix}.\$strand.sam
+      samtools view -f 163 ${bamFiles[0]}  > ${prefix}.\$strand.sam
+      samtools sort ${prefix}.\$strand.sam | samtools view -b - > ${prefix}.\$strand.sorted.bam && samtools index ${prefix}.\$strand.sorted.bam
+      bamCoverage \
+         -b  ${prefix}.\$strand.sorted.bam \
+         -o ${prefix}.bin${params.bin_size}.RPM.rmdup.\$strand.bamCoverage.bw \
+         -p ${task.cpus} \
+         -bs ${params.bin_size} \
+         ${params.bamcoverage_options} --scaleFactor ${scaleF}
+      
+      strand="plus"
+      samtools view -h -f 99 ${bamFiles[0]}  > ${prefix}.\$strand.sam
+      samtools view -f 147 ${bamFiles[0]}  > ${prefix}.\$strand.sam
+      samtools sort ${prefix}.\$strand.sam | samtools view -b - > ${prefix}.\$strand.sorted.bam && samtools index ${prefix}.\$strand.sorted.bam
+      bamCoverage \
+         -b  ${prefix}.\$strand.sorted.bam \
+         -o ${prefix}.bin${params.bin_size}.RPM.rmdup.\$strand.bamCoverage.bw \
+         -p ${task.cpus} \
+         -bs ${params.bin_size} \
+         ${params.bamcoverage_options} --scaleFactor ${scaleF}
+      """
+   }
+
+}
 process genome_coverage_bam {
    tag "$LibName genome coverage .bam"
    label 'multiCpu'
